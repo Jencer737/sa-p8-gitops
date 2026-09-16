@@ -1,0 +1,22 @@
+# values.yaml -- api-gateway / prod
+#
+# El nombre del Release de ArgoCD (definido en apps/api-gateway.yaml) es
+# "api-gateway", igual que el Service que crea api-gateway/service.yaml
+# de P5 -- por eso el resto de microservicios pueden seguir usando sus
+# URLs por defecto (ej. http://auth-service:4001) sin overrides extra:
+# el DNS interno del cluster resuelve igual.
+
+image:
+  repository: ghcr.io/jencer737/sa-p8-api-gateway
+  tag: "0.1.0"   # el pipeline de P8 lo actualiza via PR automatico a la GitOps repo
+
+service:
+  port: 4000
+  type: LoadBalancer
+
+probes:
+  path: /health
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { cpu: 200m, memory: 128Mi }

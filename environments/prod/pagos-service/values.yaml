@@ -1,0 +1,17 @@
+# values.yaml -- pagos-service / prod
+
+image:
+  repository: ghcr.io/jencer737/sa-p8-pagos-service
+  tag: "0.1.0"
+
+service:
+  port: 4004
+
+probes:
+  path: /health
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { cpu: 200m, memory: 128Mi }
+
+envFromSealedSecret: pagos-service-secrets

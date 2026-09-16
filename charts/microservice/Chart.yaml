@@ -1,0 +1,12 @@
+apiVersion: v2
+name: microservice
+description: >
+  Chart generico reutilizable para los 5 microservicios de la plataforma
+  bajo GitOps (P8). A diferencia del chart de P5 (que genera Deployment
+  plano), este genera un Rollout de Argo Rollouts con estrategia canary,
+  para que la promocion sea progresiva y este condicionada a un
+  AnalysisTemplate. Un mismo chart, un values-<servicio>.yaml distinto
+  por microservicio, y values-dev.yaml/values-prod.yaml por ambiente.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

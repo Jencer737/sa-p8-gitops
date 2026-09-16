@@ -1,0 +1,63 @@
+# analysistemplate.yaml
+#
+# Puerta de calidad de cada paso de promocion del canary: corre un Job
+# que hace smoke test contra el Service que apunta SOLO a los pods
+# candidatos (canary-service). El proveedor "job" de Argo Rollouts marca
+# la metrica como exitosa/fallida segun el codigo de salida del Job --
+# no hace falta un successCondition explicito porque no se esta
+# comparando un valor numerico, solo pass/fail.
+#
+# NOTA sobre la referencia al servicio canary usada mas abajo: esa
+# sintaxis de llaves dobles es del PROPIO Argo Rollouts (la resuelve el
+# controlador al momento de correr el analisis, sustituyendo el nombre
+# real del Service canary de este Rollout), no de Helm -- por eso va
+# entre backticks en el template, para que Helm la deje pasar tal cual
+# en vez de intentar interpretarla como una expresion suya.
+
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "microservice.name" . }}-smoke-test
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: canary-service
+    - name: stable-service
+  metrics:
+    - name: smoke-and-integration
+      # El proveedor "job" no usa successCondition: el resultado lo marca
+      # directamente el codigo de salida del Job (0 = exitoso, distinto
+      # de 0 = fallido).
+      count: {{ .Values.canary.analysis.count }}
+      failureLimit: {{ .Values.canary.analysis.failureThreshold }}
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            activeDeadlineSeconds: 120
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: smoke-test
+                    image: curlimages/curl:8.8.0
+                    env:
+                      - name: TARGET_URL
+                        value: "http://{{`{{args.canary-service}}`}}:{{ .Values.service.port }}{{ .Values.probes.path }}"
+                    command: ["sh", "-c"]
+                    args:
+                      - |
+                        set -e
+                        echo "Smoke test contra $TARGET_URL"
+                        for i in $(seq 1 5); do
+                          CODE=$(curl -s -o /dev/null -w "%{http_code}" "$TARGET_URL")
+                          echo "Intento $i: HTTP $CODE"
+                          if [ "$CODE" != "200" ]; then
+                            echo "FALLO: se esperaba 200, se obtuvo $CODE"
+                            exit 1
+                          fi
+                          sleep 2
+                        done
+                        echo "OK: 5/5 respuestas 200"

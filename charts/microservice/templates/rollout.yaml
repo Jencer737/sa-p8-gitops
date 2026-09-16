@@ -1,0 +1,96 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "microservice.name" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "microservice.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "microservice.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "microservice.name" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: {{ include "microservice.name" . }}
+          image: "{{ required "image.repository es requerido" .Values.image.repository }}:{{ required "image.tag es requerido (nunca 'latest')" .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "microservice.name" . }}-config
+            {{- if .Values.envFromSealedSecret }}
+            - secretRef:
+                name: {{ .Values.envFromSealedSecret }}
+            {{- end }}
+          {{- if .Values.extraEnv }}
+          env:
+            {{- range .Values.extraEnv }}
+            {{- if .valueFrom }}
+            - name: {{ .name }}
+              valueFrom:
+                {{- toYaml .valueFrom | nindent 16 }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          startupProbe:
+            httpGet: { path: {{ .Values.probes.path }}, port: {{ .Values.service.port }} }
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+          readinessProbe:
+            httpGet: { path: {{ .Values.probes.path }}, port: {{ .Values.service.port }} }
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          livenessProbe:
+            httpGet: { path: {{ .Values.probes.path }}, port: {{ .Values.service.port }} }
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - { name: tmp, emptyDir: {} }
+  strategy:
+    canary:
+      canaryService: {{ include "microservice.name" . }}-canary
+      stableService: {{ include "microservice.name" . }}-stable
+      steps:
+        {{- range .Values.canary.steps }}
+        {{- if hasKey . "setWeight" }}
+        - setWeight: {{ .setWeight }}
+        {{- else if hasKey . "pauseSeconds" }}
+        - pause: { duration: {{ .pauseSeconds }}s }
+        {{- else if hasKey . "analysis" }}
+        - analysis:
+            templates:
+              - templateName: {{ include "microservice.name" $ }}-smoke-test
+            args:
+              - name: canary-service
+                value: {{ include "microservice.name" $ }}-canary
+              - name: stable-service
+                value: {{ include "microservice.name" $ }}-stable
+        {{- end }}
+        {{- end }}

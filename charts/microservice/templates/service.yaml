@@ -1,0 +1,65 @@
+# service.yaml
+#
+# 3 Services, patron estandar de Argo Rollouts para canary "basico" (sin
+# service mesh / Ingress con soporte de traffic-splitting instalado en
+# este cluster):
+#
+#  - <name>            : el Service PUBLICO real, el que consumen los
+#                         demas microservicios/api-gateway. Selecciona
+#                         TODOS los pods del Rollout (estables + canary),
+#                         por lo que el trafico se reparte naturalmente
+#                         segun la proporcion de replicas de cada uno --
+#                         asi es como "setWeight: 25/50/100" logra el
+#                         efecto de canary sin necesitar un traffic
+#                         router externo.
+#  - <name>-stable      : selecciona SOLO los pods de la version estable
+#                         actual. Lo administra el propio controlador de
+#                         Argo Rollouts (le inyecta el selector de
+#                         pod-template-hash automaticamente al arrancar).
+#  - <name>-canary       : selecciona SOLO los pods de la version nueva
+#                         en despliegue. Es el que usa el AnalysisTemplate
+#                         para probar la version candidata de forma
+#                         aislada, antes de subirle mas trafico.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "microservice.name" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type | default "ClusterIP" }}
+  selector:
+    {{- include "microservice.selectorLabels" . | nindent 4 }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "microservice.name" . }}-stable
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "microservice.selectorLabels" . | nindent 4 }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "microservice.name" . }}-canary
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "microservice.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "microservice.selectorLabels" . | nindent 4 }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}

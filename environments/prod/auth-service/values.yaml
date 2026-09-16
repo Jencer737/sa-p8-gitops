@@ -1,0 +1,19 @@
+# values.yaml -- auth-service / prod
+
+image:
+  repository: ghcr.io/jencer737/sa-p8-auth-service
+  tag: "0.1.0"
+
+service:
+  port: 4001
+
+probes:
+  path: /health
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { cpu: 200m, memory: 128Mi }
+
+# Credenciales sensibles (JWT_SECRET, AES_SECRET, DATABASE_URL) via
+# Sealed Secret -- ver P8/gitops-repo-template/environments/prod/auth-service/sealed-secret.yaml
+envFromSealedSecret: auth-service-secrets

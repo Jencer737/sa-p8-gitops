@@ -1,0 +1,43 @@
+# apps/api-gateway.yaml
+#
+# Application de ArgoCD para api-gateway. Usa "multiple sources" (fuente
+# 1 = el chart en charts/microservice, fuente 2 = solo referencia para
+# poder apuntar el values.yaml a environments/prod/api-gateway/, fuera
+# del directorio del chart) -- es la forma soportada oficialmente por
+# ArgoCD de combinar "chart en un path" + "values en otro path" del
+# MISMO repo, sin usar rutas relativas "../../" (que ArgoCD bloquea por
+# seguridad fuera de este mecanismo).
+#
+# syncPolicy automated + selfHeal: ArgoCD aplica solo los cambios en
+# cuanto detecta un commit nuevo (o revierte solo si alguien tocara algo
+# a mano en el cluster) -- es la pieza central del requisito "ArgoCD es
+# el UNICO componente que aplica cambios al cluster".
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: api-gateway
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: sa-platform
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
+      targetRevision: main
+      path: charts/microservice
+      helm:
+        valueFiles:
+          - $values/environments/prod/api-gateway/values.yaml
+    - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sa-p8
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false

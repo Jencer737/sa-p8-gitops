@@ -1,0 +1,69 @@
+# values.yaml
+#
+# Valores por defecto del chart "microservice". Cada servicio real los
+# sobre-escribe con environments/<ambiente>/<servicio>/values.yaml -- ver
+# ese archivo para la lista completa de overrides por servicio.
+
+nameOverride: ""
+
+replicaCount: 2
+
+image:
+  repository: ""     # obligatorio, lo pone cada values de servicio (ghcr.io/.../sa-p8-<servicio>)
+  tag: ""             # obligatorio -- el pipeline de P8 lo actualiza via PR automatico, NUNCA "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: ghcr-pull-secret
+
+namespace: sa-p8
+
+service:
+  port: 4000
+  type: ClusterIP   # solo api-gateway lo sobre-escribe a LoadBalancer
+
+logLevel: info
+
+# Variables de entorno adicionales especificas del servicio (ej. URLs de
+# los otros microservicios, nombre de schema de base de datos). Lista de
+# {name, value} u {name, valueFrom}.
+extraEnv: []
+
+envFromSealedSecret: ""   # nombre del Secret (ya desellado) con credenciales sensibles, si aplica
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { cpu: 200m, memory: 128Mi }
+
+probes:
+  path: /health
+  startup: { failureThreshold: 30, periodSeconds: 2 }
+  readiness: { initialDelaySeconds: 5, periodSeconds: 10 }
+  liveness: { initialDelaySeconds: 15, periodSeconds: 20 }
+
+# --- Entrega progresiva (Argo Rollouts) ---------------------------------
+canary:
+  # 3 pasos de promocion como minimo (lo exige el PDF), cada uno seguido
+  # de una pausa + AnalysisTemplate. El ultimo paso al 100% no necesita
+  # weight explicito (Argo Rollouts completa automaticamente).
+  steps:
+    - setWeight: 25
+    - pauseSeconds: 30
+    - analysis: true
+    - setWeight: 50
+    - pauseSeconds: 30
+    - analysis: true
+    - setWeight: 100
+  analysis:
+    # Umbrales que definen exito/fallo del AnalysisTemplate -- ver
+    # justificacion completa en P8/docs/DOCUMENTACION.md seccion 2.
+    successThreshold: 1
+    failureThreshold: 1
+    inconclusiveThreshold: 0
+    count: 1
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
