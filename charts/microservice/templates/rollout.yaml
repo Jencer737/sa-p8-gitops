@@ -73,6 +73,14 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - { name: tmp, emptyDir: {} }
+  # Sin esto, si un pod candidato nunca llega a estar Ready (ej. su propio
+  # readinessProbe falla), Argo Rollouts se queda "Degraded" indefinidamente
+  # esperando intervencion manual -- NO revierte solo. progressDeadlineAbort
+  # es lo que hace que, pasado ese tiempo sin progreso, el propio Rollout
+  # aborte y regrese el 100% del trafico a la version estable de forma
+  # automatica (justo el requisito de "reversion automatica" del PDF).
+  progressDeadlineSeconds: 120
+  progressDeadlineAbort: true
   strategy:
     canary:
       canaryService: {{ include "microservice.name" . }}-canary
