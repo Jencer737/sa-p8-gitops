@@ -40,9 +40,19 @@ spec:
             template:
               spec:
                 restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
                 containers:
                   - name: smoke-test
                     image: curlimages/curl:8.8.0
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      runAsNonRoot: true
+                      capabilities:
+                        drop: ["ALL"]
+                    resources:
+                      requests: { cpu: 25m, memory: 32Mi }
+                      limits: { cpu: 100m, memory: 64Mi }
                     env:
                       - name: TARGET_URL
                         value: "http://{{`{{args.canary-service}}`}}:{{ .Values.service.port }}{{ .Values.probes.path }}"
