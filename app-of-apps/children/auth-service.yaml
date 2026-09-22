@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: auth-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: sa-platform
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
+      targetRevision: main
+      path: charts/microservice
+      helm:
+        valueFiles:
+          - $values/environments/prod/auth-service/values.yaml
+    - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
+      targetRevision: main
+      ref: values
+    # P9: en P8 el sealed-secret.yaml se aplicaba a mano con kubectl
+    # porque el chart no lo sincroniza (solo renderiza values.yaml, no
+    # aplica archivos sueltos del repo). Esta tercera fuente es un
+    # "directory source" que apunta SOLO a la carpeta secrets/, para que
+    # ArgoCD sincronice ese SealedSecret como cualquier otro recurso --
+    # ya no hace falta ningun kubectl apply manual.
+    - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
+      targetRevision: main
+      path: environments/prod/auth-service/secrets
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sa-p8
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true

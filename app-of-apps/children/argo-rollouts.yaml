@@ -1,0 +1,31 @@
+# Reemplaza el "helm install argo-rollouts" manual guiado de P8.
+# Sync-wave temprano: el CRD "Rollout" debe existir antes de que
+# cualquier microservicio intente crear un recurso de ese tipo (el mismo
+# error "no matches for kind Rollout" que se depuró a mano en P8).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  labels:
+    app.kubernetes.io/part-of: sa-platform-infra
+spec:
+  project: default
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: 2.37.7
+    helm:
+      releaseName: argo-rollouts
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -1,0 +1,49 @@
+# disallow-latest-tag.yaml
+#
+# Politica obligatoria 1/3: prohibir la etiqueta "latest" (o ausencia de
+# etiqueta, que Kubernetes interpreta como "latest"). validationFailureAction
+# = Enforce: RECHAZA el pod al admitirlo, no solo lo audita/reporta.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: Disallow Latest Tag
+    policies.kyverno.io/category: Practica 8 - Cadena de suministro
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Ninguna imagen puede usar el tag "latest" (mutable, rompe la
+      trazabilidad y el rollback). Todas las imagenes de sa-p8 deben venir
+      etiquetadas con un tag semantico derivado de un release de Git.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-image-tag
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["sa-p8"]
+      validate:
+        message: "La imagen no puede usar el tag 'latest' ni quedar sin tag -- usa un tag semantico (ej. v1.2.3)."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+    - name: require-image-tag-present
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["sa-p8"]
+      validate:
+        message: "La imagen debe traer un tag explicito (repo/imagen:tag) -- sin tag, Kubernetes usa 'latest' implicitamente."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ contains(element.image, ':') }}"
+                    operator: Equals
+                    value: false

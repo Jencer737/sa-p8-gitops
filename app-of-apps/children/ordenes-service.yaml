@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: auth-service
+  name: ordenes-service
   namespace: argocd
   labels:
     app.kubernetes.io/part-of: sa-platform
@@ -13,10 +13,15 @@ spec:
       path: charts/microservice
       helm:
         valueFiles:
-          - $values/environments/prod/auth-service/values.yaml
+          - $values/environments/prod/ordenes-service/values.yaml
     - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
       targetRevision: main
       ref: values
+    # P9: sincroniza el SealedSecret (ver auth-service.yaml para la nota
+    # completa de por que esto reemplaza el kubectl apply manual de P8).
+    - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
+      targetRevision: main
+      path: environments/prod/ordenes-service/secrets
   destination:
     server: https://kubernetes.default.svc
     namespace: sa-p8
@@ -26,3 +31,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true

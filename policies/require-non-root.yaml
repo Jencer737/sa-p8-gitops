@@ -1,0 +1,40 @@
+# require-non-root.yaml
+#
+# Politica obligatoria 3/3: ningun contenedor puede correr como root. El
+# chart de "microservice" ya fija runAsNonRoot: true / runAsUser: 10001
+# en el Rollout, asi que en condiciones normales esta politica nunca
+# deberia disparar -- esta aqui como una segunda barrera independiente
+# del chart: si alguien commitea un values.yaml que quite esa
+# configuracion, Kyverno lo rechaza en el cluster de todas formas, no
+# depende solo de que el chart se porte bien.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-nonroot
+  annotations:
+    policies.kyverno.io/title: Require Run As Non-Root
+    policies.kyverno.io/category: Practica 8 - Cadena de suministro
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Todo pod en sa-p8 debe ejecutarse con runAsNonRoot: true, a nivel
+      de pod o de cada contenedor.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-run-as-nonroot
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["sa-p8"]
+      validate:
+        message: "El pod (o cada contenedor) debe declarar securityContext.runAsNonRoot: true."
+        anyPattern:
+          - spec:
+              securityContext:
+                runAsNonRoot: true
+          - spec:
+              containers:
+                - securityContext:
+                    runAsNonRoot: true

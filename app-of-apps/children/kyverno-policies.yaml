@@ -1,0 +1,29 @@
+# Las 4 ClusterPolicy que en P8 se aplicaban a mano con
+# "kubectl apply -f P8/policies/". Ahora viven en el repo GitOps
+# (carpeta policies/, copiada tal cual de P8/policies/) y las aplica
+# ArgoCD despues de que el controlador de Kyverno (sync-wave -2) este
+# arriba.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno-policies
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/part-of: sa-platform-infra
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Jencer737/sa-p8-gitops
+    targetRevision: main
+    path: policies
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: sa-p8
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false

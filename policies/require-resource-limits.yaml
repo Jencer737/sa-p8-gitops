@@ -1,0 +1,39 @@
+# require-resource-limits.yaml
+#
+# Politica obligatoria 2/3: todo contenedor debe declarar limits.cpu y
+# limits.memory explicitos. El LimitRange de Terraform (sa-p8-limits) ya
+# pone un default automatico si alguien lo omite, pero esta politica
+# ademas RECHAZA el pod si intenta desplegarse sin limites -- asi el
+# incumplimiento queda visible en el momento de la admision, no
+# escondido detras de un valor por defecto silencioso.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/category: Practica 8 - Cadena de suministro
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Todo contenedor en sa-p8 debe declarar limits.cpu y limits.memory
+      explicitos -- evita que un pod sin limites acapare los recursos
+      compartidos del cluster (donde tambien corre sa-p7).
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-cpu-memory-limits
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["sa-p8"]
+      validate:
+        message: "El contenedor debe declarar resources.limits.cpu y resources.limits.memory explicitos."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"

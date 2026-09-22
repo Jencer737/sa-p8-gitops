@@ -67,3 +67,15 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 4
   targetCPUUtilizationPercentage: 70
+
+# --- Resiliencia ante perdida de nodo (P9) ------------------------------
+# Activo por defecto para los 5 servicios: con replicaCount=2 y
+# minAvailable=1, un drenaje de nodo solo puede desalojar un pod a la vez
+# y debe esperar a que el otro siga listo, asi el Service nunca se queda
+# sin endpoints durante la prueba.
+pdb:
+  enabled: true
+  minAvailable: 1
+
+antiAffinity:
+  enabled: true

@@ -1,0 +1,74 @@
+# Instala el controlador de Velero, con el BackupStorageLocation
+# apuntando al bucket del stack "persistent" y el Schedule programado
+# definidos directamente en los values del chart oficial (que soporta
+# ambos nativamente) -- no hace falta una Application ni un CRD aparte.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: velero
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  labels:
+    app.kubernetes.io/part-of: sa-platform-infra
+spec:
+  project: default
+  sources:
+    - repoURL: https://vmware-tanzu.github.io/helm-charts
+      chart: velero
+      targetRevision: 8.1.0
+      helm:
+        releaseName: velero
+        # credentials-velero: SealedSecret con la clave de la Service
+        # Account de GCP que Velero usa para escribir en el bucket -- ver
+        # GENERAR-SEALED-SECRETS.md seccion "cloud-credentials". El
+        # bucket se inyecta aqui via values, no esta hardcodeado en el
+        # chart.
+        values: |
+          initContainers:
+            - name: velero-plugin-for-gcp
+              image: velero/velero-plugin-for-gcp:v1.11.1
+              volumeMounts:
+                - mountPath: /target
+                  name: plugins
+          configuration:
+            backupStorageLocation:
+              - name: default
+                provider: gcp
+                bucket: "<TU_BUCKET_DE_VELERO>" # output velero_bucket_name del stack persistent
+            volumeSnapshotLocation:
+              - name: default
+                provider: gcp
+          credentials:
+            existingSecret: cloud-credentials
+          # Respaldo diario, con volumenes persistentes incluidos (el
+          # requisito explicito del PDF) y 14 dias de retencion -- igual
+          # al lifecycle rule del bucket en el stack persistent, asi el
+          # objeto nunca sobrevive en el bucket mas de lo que Velero cree
+          # que debe.
+          schedules:
+            daily-backup:
+              disabled: false
+              schedule: "0 3 * * *"
+              useOwnerReferencesInBackup: false
+              template:
+                ttl: "336h0m0s" # 14 dias
+                includedNamespaces:
+                  - sa-p8
+                snapshotVolumes: true
+                defaultVolumesToFsBackup: true
+    # P9: sincroniza el SealedSecret cloud-credentials (ver
+    # auth-service.yaml para la nota completa de por que esto reemplaza
+    # el kubectl apply manual de P8).
+    - repoURL: https://github.com/Jencer737/sa-p8-gitops
+      targetRevision: main
+      path: environments/prod/velero/secrets
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: velero
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

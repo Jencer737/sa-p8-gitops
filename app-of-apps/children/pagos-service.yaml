@@ -17,6 +17,11 @@ spec:
     - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
       targetRevision: main
       ref: values
+    # P9: sincroniza el SealedSecret (ver auth-service.yaml para la nota
+    # completa de por que esto reemplaza el kubectl apply manual de P8).
+    - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
+      targetRevision: main
+      path: environments/prod/pagos-service/secrets
   destination:
     server: https://kubernetes.default.svc
     namespace: sa-p8
@@ -26,3 +31,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=false
+      - SkipDryRunOnMissingResource=true

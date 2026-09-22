@@ -23,6 +23,22 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.antiAffinity.enabled }}
+      # "preferred" (blando) y no "required": con 2 nodos y 5 servicios a
+      # 2 replicas cada uno, una regla dura podria dejar pods en Pending
+      # si el scheduler no encuentra suficiente espacio en un segundo
+      # nodo. La prueba de perdida de nodo (P9/docs/RUNBOOK.md) verifica
+      # la ubicacion real antes de drenar, no confia ciegamente en esto.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    {{- include "microservice.selectorLabels" . | nindent 20 }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001

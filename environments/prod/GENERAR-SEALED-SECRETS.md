@@ -1,5 +1,13 @@
 # Cómo generar las `SealedSecret` (una vez, en tu compu)
 
+> **Nota P9**: cada vez que el clúster se destruye y reconstruye (la
+> prueba de DR), el controlador de Sealed Secrets genera una llave nueva
+> — SALVO que se restaure la llave respaldada antes de que arranque (ver
+> `P9/scripts/restore-sealed-secrets-key.sh`). Si restauraste la llave,
+> los `sealed-secret.yaml` ya commiteados siguen siendo válidos tal cual
+> y **no hace falta repetir nada de esta guía**. Solo regenera los de
+> abajo si es la primera vez, o si decidiste NO restaurar la llave vieja.
+
 Estas sí puedes ver, compartir y **commitear en el repo público** — es
 justamente el punto de Sealed Secrets: quedan cifradas con la llave
 pública del controlador que corre en tu clúster; solo ese controlador
@@ -23,12 +31,30 @@ kubectl create secret generic auth-service-secrets `
   > environments/prod/auth-service/sealed-secret.yaml
 ```
 
-## productos-service (DATABASE_URL)
+## postgres-productos (P9 — credenciales del Postgres en el clúster)
+
+Este ya NO es Neon: desde P9, `productos-service` usa un Postgres dentro
+del propio clúster (chart `bitnami/postgresql`, ver
+`environments/prod/postgres-productos/values.yaml`). Elige una
+contraseña nueva (no reutilices ninguna de Neon) y úsala en los dos
+comandos siguientes — deben coincidir.
+
+```powershell
+kubectl create secret generic postgres-productos-credentials `
+  --namespace sa-p8 `
+  --from-literal=postgres-password="<contraseña-admin-nueva>" `
+  --from-literal=password="<contraseña-nueva-del-usuario-productos>" `
+  --dry-run=client -o yaml | kubeseal --format yaml `
+  --controller-name=sealed-secrets --controller-namespace=kube-system `
+  > environments/prod/postgres-productos/sealed-secret.yaml
+```
+
+## productos-service (DATABASE_URL — P9, apunta al Postgres del clúster)
 
 ```powershell
 kubectl create secret generic productos-service-secrets `
   --namespace sa-p8 `
-  --from-literal=DATABASE_URL="postgresql://svc_productos:<tu-productos-service.db.password>@<tu-NEON_HOST>/sa_platform?sslmode=require" `
+  --from-literal=DATABASE_URL="postgresql://productos:<misma-contraseña-nueva-del-usuario-productos>@postgres-productos.sa-p8.svc.cluster.local:5432/productos" `
   --dry-run=client -o yaml | kubeseal --format yaml `
   --controller-name=sealed-secrets --controller-namespace=kube-system `
   > environments/prod/productos-service/sealed-secret.yaml
@@ -55,6 +81,41 @@ kubectl create secret generic pagos-service-secrets `
   --controller-name=sealed-secrets --controller-namespace=kube-system `
   > environments/prod/pagos-service/sealed-secret.yaml
 ```
+
+## cloud-credentials (P9 — Velero necesita escribir en el bucket de GCS)
+
+Requiere una Service Account de GCP propia, con permiso solo sobre el
+bucket de respaldos (no la misma que usa GitHub Actions para GHCR — otra
+superficie separada). Créala una vez:
+
+```powershell
+gcloud iam service-accounts create sa-p9-velero `
+  --project "$env:GCP_PROJECT" `
+  --display-name "Velero backups P9"
+
+gcloud storage buckets add-iam-policy-binding "gs://<tu-bucket-de-velero>" `
+  --member="serviceAccount:sa-p9-velero@$env:GCP_PROJECT.iam.gserviceaccount.com" `
+  --role="roles/storage.objectAdmin"
+
+gcloud iam service-accounts keys create sa-p9-velero-key.json `
+  --iam-account="sa-p9-velero@$env:GCP_PROJECT.iam.gserviceaccount.com"
+```
+
+Sella esa llave (formato que espera el plugin `velero-plugin-for-gcp`, un
+solo campo `cloud`):
+
+```powershell
+kubectl create secret generic cloud-credentials `
+  --namespace velero `
+  --from-file=cloud=sa-p9-velero-key.json `
+  --dry-run=client -o yaml | kubeseal --format yaml `
+  --controller-name=sealed-secrets --controller-namespace=kube-system `
+  > environments/prod/velero/sealed-secret.yaml
+```
+
+**Borra `sa-p9-velero-key.json` de tu disco inmediatamente después** — ya
+quedó cifrada dentro del `sealed-secret.yaml`, no necesitas conservar el
+archivo plano.
 
 ## Notas
 

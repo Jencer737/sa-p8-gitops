@@ -1,0 +1,32 @@
+# Reemplaza el "helm install kyverno" manual de P8. Las 4 ClusterPolicy
+# de P8 (disallow-latest-tag, require-resource-limits, require-non-root,
+# verify-cosign-signature) se agregan como una Application aparte
+# (kyverno-policies.yaml) en el siguiente sync-wave, para que el
+# controlador de Kyverno ya este listo cuando se apliquen.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  labels:
+    app.kubernetes.io/part-of: sa-platform-infra
+spec:
+  project: default
+  source:
+    repoURL: https://kyverno.github.io/kyverno
+    chart: kyverno
+    targetRevision: 3.3.6
+    helm:
+      releaseName: kyverno
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
