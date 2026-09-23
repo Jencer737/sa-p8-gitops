@@ -25,25 +25,20 @@ spec:
         # bucket se inyecta aqui via values, no esta hardcodeado en el
         # chart.
         values: |
-          # El job "upgrade-crds" copia "sh" y "kubectl" del contenedor
-          # kubectl.image a un volumen compartido, y el contenedor
-          # principal (velero/velero, basado en Debian/glibc "distroless")
-          # los ejecuta desde ahi. bitnami/kubectl (Debian, glibc) dejo de
-          # publicar tags libres en 2025. Se probaron dos alternativas que
-          # SI tienen tags versionados libres pero son de Alpine (musl):
-          # rancher/kubectl (sin /bin/sh) y alpine/k8s (con shell, pero
-          # los binarios musl truenan silenciosamente al copiarse a un
-          # contenedor glibc -- "Back-off restarting failed container"
-          # sin mensaje de error util). gcr.io/.../cloud-sdk:*-slim SI es
-          # Debian/glibc, igual que la imagen base de Velero -- misma
-          # familia, sin el problema de incompatibilidad binaria.
-          kubectl:
-            image:
-              repository: gcr.io/google.com/cloudsdktool/cloud-sdk
-              # NO usar el tag "-slim": esa variante excluye kubectl (es
-              # un componente opcional de gcloud) -- el tag por defecto
-              # (sin sufijo) si lo incluye.
-              tag: "586.0.0"
+          # El job "upgrade-crds" (kubectl.image) resulto ser un callejon
+          # sin salida: necesita copiar binarios "sh"/"kubectl" al
+          # contenedor principal de Velero via un volumen compartido, y
+          # cada alternativa libre probada fallo por una razon distinta
+          # (bitnami sin tags libres, rancher sin shell, alpine con
+          # incompatibilidad musl/glibc, cloud-sdk con una version de
+          # GLIBC mas nueva que la que soporta el binario "sh" copiado).
+          # La solucion real: el chart ya trae las CRDs en su carpeta
+          # crds/ de Helm, que se instala automaticamente en cualquier
+          # instalacion nueva -- exactamente nuestro caso, ya que cada
+          # reconstruccion de P9 arranca de cero. El job de "upgrade" solo
+          # hace falta para actualizar CRDs de un Velero YA instalado a
+          # una version distinta, algo que nunca nos pasa aqui.
+          upgradeCRDs: false
           initContainers:
             - name: velero-plugin-for-gcp
               image: velero/velero-plugin-for-gcp:v1.11.1
