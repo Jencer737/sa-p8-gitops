@@ -31,7 +31,7 @@ kubectl create secret docker-registry ghcr-pull-secret `
   --docker-username="<tu-usuario-de-github>" `
   --docker-password="<tu-PAT-con-scope-read:packages>" `
   --dry-run=client -o yaml | kubeseal --format yaml `
-  --controller-name=sealed-secrets --controller-namespace=kube-system `
+  --controller-name=sealed-secrets-controller --controller-namespace=kube-system `
   > environments/prod/ghcr-pull-secret/secrets/sealed-secret.yaml
 ```
 
@@ -44,8 +44,8 @@ kubectl create secret generic auth-service-secrets `
   --from-literal=AES_SECRET="<tu-auth-service.aesSecret-de-values-secrets.yaml>" `
   --from-literal=DATABASE_URL="postgresql://svc_auth:<tu-auth-service.db.password>@<tu-NEON_HOST>/sa_platform?sslmode=require" `
   --dry-run=client -o yaml | kubeseal --format yaml `
-  --controller-name=sealed-secrets --controller-namespace=kube-system `
-  > environments/prod/auth-service/sealed-secret.yaml
+  --controller-name=sealed-secrets-controller --controller-namespace=kube-system `
+  > environments/prod/auth-service/secrets/sealed-secret.yaml
 ```
 
 ## postgres-productos (P9 — credenciales del Postgres en el clúster)
@@ -65,7 +65,7 @@ kubectl create secret generic postgres-productos-credentials `
   --namespace sa-p8 `
   --from-literal=password="<contraseña-nueva-de-productos>" `
   --dry-run=client -o yaml | kubeseal --format yaml `
-  --controller-name=sealed-secrets --controller-namespace=kube-system `
+  --controller-name=sealed-secrets-controller --controller-namespace=kube-system `
   > environments/prod/postgres-productos/secrets/sealed-secret.yaml
 ```
 
@@ -76,8 +76,8 @@ kubectl create secret generic productos-service-secrets `
   --namespace sa-p8 `
   --from-literal=DATABASE_URL="postgresql://productos:<misma-contraseña-nueva-de-productos>@postgres-productos.sa-p8.svc.cluster.local:5432/productos" `
   --dry-run=client -o yaml | kubeseal --format yaml `
-  --controller-name=sealed-secrets --controller-namespace=kube-system `
-  > environments/prod/productos-service/sealed-secret.yaml
+  --controller-name=sealed-secrets-controller --controller-namespace=kube-system `
+  > environments/prod/productos-service/secrets/sealed-secret.yaml
 ```
 
 ## ordenes-service (DATABASE_URL)
@@ -87,8 +87,8 @@ kubectl create secret generic ordenes-service-secrets `
   --namespace sa-p8 `
   --from-literal=DATABASE_URL="postgresql://svc_ordenes:<tu-ordenes-service.db.password>@<tu-NEON_HOST>/sa_platform?sslmode=require" `
   --dry-run=client -o yaml | kubeseal --format yaml `
-  --controller-name=sealed-secrets --controller-namespace=kube-system `
-  > environments/prod/ordenes-service/sealed-secret.yaml
+  --controller-name=sealed-secrets-controller --controller-namespace=kube-system `
+  > environments/prod/ordenes-service/secrets/sealed-secret.yaml
 ```
 
 ## pagos-service (DATABASE_URL)
@@ -98,8 +98,8 @@ kubectl create secret generic pagos-service-secrets `
   --namespace sa-p8 `
   --from-literal=DATABASE_URL="postgresql://svc_pagos:<tu-pagos-service.db.password>@<tu-NEON_HOST>/sa_platform?sslmode=require" `
   --dry-run=client -o yaml | kubeseal --format yaml `
-  --controller-name=sealed-secrets --controller-namespace=kube-system `
-  > environments/prod/pagos-service/sealed-secret.yaml
+  --controller-name=sealed-secrets-controller --controller-namespace=kube-system `
+  > environments/prod/pagos-service/secrets/sealed-secret.yaml
 ```
 
 ## cloud-credentials (P9 — Velero necesita escribir en el bucket de GCS)
@@ -129,8 +129,8 @@ kubectl create secret generic cloud-credentials `
   --namespace velero `
   --from-file=cloud=sa-p9-velero-key.json `
   --dry-run=client -o yaml | kubeseal --format yaml `
-  --controller-name=sealed-secrets --controller-namespace=kube-system `
-  > environments/prod/velero/sealed-secret.yaml
+  --controller-name=sealed-secrets-controller --controller-namespace=kube-system `
+  > environments/prod/velero/secrets/sealed-secret.yaml
 ```
 
 **Borra `sa-p9-velero-key.json` de tu disco inmediatamente después** — ya
