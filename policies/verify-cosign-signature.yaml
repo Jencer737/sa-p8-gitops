@@ -46,3 +46,5 @@ spec:
                 - keyless:
                     subjectRegExp: "https://github.com/Jencer737/Practicas-SA-B-202002141/.*"
                     issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev
