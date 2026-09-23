@@ -1,15 +1,10 @@
 # Base de datos con volumen persistente dentro del cluster (requisito
-# explicito del PDF: "al menos un microservicio con base de datos y
-# volumen persistente"). Usa el chart oficial de Bitnami en vez de un
-# StatefulSet propio -- ya trae PVC, probes y politicas de backup-friendly
-# por defecto, y el `initdb.scripts` siembra el mismo esquema/datos que
-# P4/productos-service/db/init.sql (copiado tal cual), para que la
-# restauracion de Velero tenga contenido real que verificar, no un
-# volumen vacio.
-#
-# productos-service pasa a usar esta base en vez de Neon: ver
-# environments/prod/productos-service/values.yaml (DATABASE_URL apunta a
-# postgres-productos.sa-p8.svc.cluster.local).
+# explicito del PDF). StatefulSet propio con la imagen oficial de
+# postgres (ver manifests/statefulset.yaml para la justificacion
+# completa de por que se abandono el chart de Bitnami: su registro
+# gratuito de Docker Hub dejo de publicar tags versionados en 2025,
+# solo ":latest" -- que ademas viola nuestra propia politica
+# disallow-latest-tag).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -22,18 +17,9 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: https://charts.bitnami.com/bitnami
-      chart: postgresql
-      targetRevision: 15.5.20
-      helm:
-        releaseName: postgres-productos
-        valueFiles:
-          - $values/environments/prod/postgres-productos/values.yaml
     - repoURL: https://github.com/Jencer737/sa-p8-gitops
       targetRevision: main
-      ref: values
-    # P9: sincroniza el SealedSecret con las credenciales del propio
-    # Postgres (postgres-productos-credentials).
+      path: environments/prod/postgres-productos/manifests
     - repoURL: https://github.com/Jencer737/sa-p8-gitops
       targetRevision: main
       path: environments/prod/postgres-productos/secrets

@@ -50,20 +50,23 @@ kubectl create secret generic auth-service-secrets `
 
 ## postgres-productos (P9 — credenciales del Postgres en el clúster)
 
-Este ya NO es Neon: desde P9, `productos-service` usa un Postgres dentro
-del propio clúster (chart `bitnami/postgresql`, ver
-`environments/prod/postgres-productos/values.yaml`). Elige una
-contraseña nueva (no reutilices ninguna de Neon) y úsala en los dos
-comandos siguientes — deben coincidir.
+Este ya NO es Neon: desde P9, `productos-service` usa un Postgres propio
+dentro del clúster (StatefulSet con la imagen oficial `postgres:16.4`,
+ver `environments/prod/postgres-productos/manifests/statefulset.yaml` —
+se abandonó el chart de Bitnami porque su registro gratuito de Docker
+Hub dejó de publicar tags versionados en 2025, solo `:latest`, que
+además viola nuestra propia política `disallow-latest-tag`). Solo hace
+falta UNA contraseña (a diferencia de Bitnami, que pedía admin + usuario
+por separado) — elige una nueva, no reutilices ninguna de Neon, y
+úsala también en el comando de `productos-service` de abajo.
 
 ```powershell
 kubectl create secret generic postgres-productos-credentials `
   --namespace sa-p8 `
-  --from-literal=postgres-password="<contraseña-admin-nueva>" `
-  --from-literal=password="<contraseña-nueva-del-usuario-productos>" `
+  --from-literal=password="<contraseña-nueva-de-productos>" `
   --dry-run=client -o yaml | kubeseal --format yaml `
   --controller-name=sealed-secrets --controller-namespace=kube-system `
-  > environments/prod/postgres-productos/sealed-secret.yaml
+  > environments/prod/postgres-productos/secrets/sealed-secret.yaml
 ```
 
 ## productos-service (DATABASE_URL — P9, apunta al Postgres del clúster)
@@ -71,7 +74,7 @@ kubectl create secret generic postgres-productos-credentials `
 ```powershell
 kubectl create secret generic productos-service-secrets `
   --namespace sa-p8 `
-  --from-literal=DATABASE_URL="postgresql://productos:<misma-contraseña-nueva-del-usuario-productos>@postgres-productos.sa-p8.svc.cluster.local:5432/productos" `
+  --from-literal=DATABASE_URL="postgresql://productos:<misma-contraseña-nueva-de-productos>@postgres-productos.sa-p8.svc.cluster.local:5432/productos" `
   --dry-run=client -o yaml | kubeseal --format yaml `
   --controller-name=sealed-secrets --controller-namespace=kube-system `
   > environments/prod/productos-service/sealed-secret.yaml

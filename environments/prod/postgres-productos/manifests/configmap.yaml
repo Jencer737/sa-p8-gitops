@@ -1,0 +1,24 @@
+# ConfigMap con el script de inicializacion -- la imagen oficial de
+# postgres ejecuta automaticamente cualquier *.sql que encuentre en
+# /docker-entrypoint-initdb.d/ la primera vez que el volumen esta vacio.
+# Mismo esquema/datos reales de P4/productos-service/db/init.sql.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-productos-initdb
+  namespace: sa-p8
+data:
+  init.sql: |
+    CREATE TABLE IF NOT EXISTS productos (
+      id UUID PRIMARY KEY,
+      nombre TEXT NOT NULL,
+      precio NUMERIC(12, 2) NOT NULL,
+      stock INTEGER NOT NULL,
+      categoria TEXT NOT NULL
+    );
+
+    INSERT INTO productos (id, nombre, precio, stock, categoria) VALUES
+      (gen_random_uuid(), 'Teclado mecánico', 350, 20, 'Periféricos'),
+      (gen_random_uuid(), 'Mouse inalámbrico', 150, 35, 'Periféricos'),
+      (gen_random_uuid(), 'Monitor 24"', 1200, 10, 'Monitores')
+    ON CONFLICT DO NOTHING;

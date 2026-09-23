@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-productos
+  namespace: sa-p8
+  labels:
+    app.kubernetes.io/name: postgres-productos
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: postgres-productos
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
