@@ -25,18 +25,22 @@ spec:
         # bucket se inyecta aqui via values, no esta hardcodeado en el
         # chart.
         values: |
-          # El job "upgrade-crds" del chart usa por defecto
-          # bitnami/kubectl:<version-del-cluster> -- bitnami dejo de
-          # publicar tags versionados gratis en Docker Hub en 2025 (mismo
-          # problema que con bitnami/postgresql). Se probo
-          # rancher/kubectl como alternativa, pero esa imagen no trae
-          # /bin/sh y el script del job lo necesita. alpine/k8s SI trae
-          # shell completo + kubectl, y sigue publicando tags versionados
-          # libres.
+          # El job "upgrade-crds" copia "sh" y "kubectl" del contenedor
+          # kubectl.image a un volumen compartido, y el contenedor
+          # principal (velero/velero, basado en Debian/glibc "distroless")
+          # los ejecuta desde ahi. bitnami/kubectl (Debian, glibc) dejo de
+          # publicar tags libres en 2025. Se probaron dos alternativas que
+          # SI tienen tags versionados libres pero son de Alpine (musl):
+          # rancher/kubectl (sin /bin/sh) y alpine/k8s (con shell, pero
+          # los binarios musl truenan silenciosamente al copiarse a un
+          # contenedor glibc -- "Back-off restarting failed container"
+          # sin mensaje de error util). gcr.io/.../cloud-sdk:*-slim SI es
+          # Debian/glibc, igual que la imagen base de Velero -- misma
+          # familia, sin el problema de incompatibilidad binaria.
           kubectl:
             image:
-              repository: docker.io/alpine/k8s
-              tag: "1.35.0"
+              repository: gcr.io/google.com/cloudsdktool/cloud-sdk
+              tag: "586.0.0-slim"
           initContainers:
             - name: velero-plugin-for-gcp
               image: velero/velero-plugin-for-gcp:v1.11.1
