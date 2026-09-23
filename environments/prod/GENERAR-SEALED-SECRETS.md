@@ -18,6 +18,23 @@ Reutiliza las mismas 8 contraseñas/secretos que ya generaste para
 `P7/values-secrets.yaml` (abre ese archivo con `notepad` para copiarlas)
 — es la misma base de datos de Neon, no hace falta generar nada nuevo.
 
+## ghcr-pull-secret (P9 — reemplaza el kubectl create secret manual de P7/P8)
+
+Necesitas un GitHub PAT con scope `read:packages` (uno nuevo o el mismo
+que ya usaste en P7/P8, si sigue vigente — créalo en
+https://github.com/settings/tokens).
+
+```powershell
+kubectl create secret docker-registry ghcr-pull-secret `
+  --namespace sa-p8 `
+  --docker-server=ghcr.io `
+  --docker-username="<tu-usuario-de-github>" `
+  --docker-password="<tu-PAT-con-scope-read:packages>" `
+  --dry-run=client -o yaml | kubeseal --format yaml `
+  --controller-name=sealed-secrets --controller-namespace=kube-system `
+  > environments/prod/ghcr-pull-secret/secrets/sealed-secret.yaml
+```
+
 ## auth-service (necesita JWT_SECRET, AES_SECRET, DATABASE_URL)
 
 ```powershell
