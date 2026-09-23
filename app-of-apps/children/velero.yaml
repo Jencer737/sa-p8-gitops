@@ -40,7 +40,10 @@ spec:
           kubectl:
             image:
               repository: gcr.io/google.com/cloudsdktool/cloud-sdk
-              tag: "586.0.0-slim"
+              # NO usar el tag "-slim": esa variante excluye kubectl (es
+              # un componente opcional de gcloud) -- el tag por defecto
+              # (sin sufijo) si lo incluye.
+              tag: "586.0.0"
           initContainers:
             - name: velero-plugin-for-gcp
               image: velero/velero-plugin-for-gcp:v1.11.1
