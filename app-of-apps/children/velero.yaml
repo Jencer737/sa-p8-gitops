@@ -25,6 +25,15 @@ spec:
         # bucket se inyecta aqui via values, no esta hardcodeado en el
         # chart.
         values: |
+          # El job "upgrade-crds" del chart usa por defecto
+          # bitnami/kubectl:<version-del-cluster> -- bitnami tambien dejo
+          # de publicar tags versionados gratis en Docker Hub en 2025
+          # (mismo problema que con bitnami/postgresql). rancher/kubectl
+          # SI sigue publicando tags versionados y libres.
+          kubectl:
+            image:
+              repository: docker.io/rancher/kubectl
+              tag: v1.35.0
           initContainers:
             - name: velero-plugin-for-gcp
               image: velero/velero-plugin-for-gcp:v1.11.1
