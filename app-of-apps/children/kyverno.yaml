@@ -20,6 +20,23 @@ spec:
     targetRevision: 3.3.6
     helm:
       releaseName: kyverno
+      # Los hooks internos del chart (limpieza de PolicyReports tras
+      # instalar, limpieza de webhooks antes de desinstalar -- esto
+      # ultimo importa para "terraform destroy" en la prueba de DR)
+      # usan bitnami/kubectl:1.30.2 por defecto, tag que ya no existe
+      # gratis (mismo problema recurrente de Bitnami en esta practica).
+      # Aqui no hace falta copiar binarios entre contenedores (como en
+      # el job de Velero), asi que cualquier imagen versionada con
+      # kubectl sirve.
+      values: |
+        policyReportsCleanup:
+          image:
+            repository: rancher/kubectl
+            tag: v1.35.0
+        webhooksCleanup:
+          image:
+            repository: rancher/kubectl
+            tag: v1.35.0
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno
