@@ -155,3 +155,12 @@ archivo plano.
   **commitear tal cual** en `sa-p8-gitops` — está referenciado
   automáticamente por el chart vía `envFromSealedSecret` en cada
   `values.yaml` de servicio (ya viene configurado).
+- **Verifica la codificación antes de subir**: en Windows PowerShell
+  5.1, el `>` de redirección guarda el archivo en UTF-16 (con nulls
+  entre cada carácter), no UTF-8 -- Kubernetes lo rechaza. Después de
+  cada comando, confirma con `file environments/prod/<servicio>/secrets/sealed-secret.yaml`
+  que diga "ASCII text" o "UTF-8", no "UTF-16". Si dice UTF-16,
+  conviértelo con:
+  ```powershell
+  Get-Content -Encoding Unicode environments/prod/<servicio>/secrets/sealed-secret.yaml | Set-Content -Encoding utf8 environments/prod/<servicio>/secrets/sealed-secret.yaml
+  ```
