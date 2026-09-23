@@ -35,7 +35,7 @@ spec:
             backupStorageLocation:
               - name: default
                 provider: gcp
-                bucket: "<TU_BUCKET_DE_VELERO>" # output velero_bucket_name del stack persistent
+                bucket: "sa-p9-velero-202002141" # output velero_bucket_name del stack persistent
             volumeSnapshotLocation:
               - name: default
                 provider: gcp
