@@ -35,6 +35,23 @@ kubectl create secret docker-registry ghcr-pull-secret `
   > environments/prod/ghcr-pull-secret/secrets/sealed-secret.yaml
 ```
 
+## ghcr-pull-secret-kyverno (P9 — copia en el namespace kyverno)
+
+Kyverno exige que las credenciales para verificar firmas en un registro
+privado (GHCR) vivan en SU PROPIO namespace, no en `sa-p8`. Mismo PAT que
+el `ghcr-pull-secret` de arriba, solo cambia el namespace de destino:
+
+```powershell
+kubectl create secret docker-registry ghcr-pull-secret `
+  --namespace kyverno `
+  --docker-server=ghcr.io `
+  --docker-username="<tu-usuario-de-github>" `
+  --docker-password="<tu-PAT-con-scope-read:packages>" `
+  --dry-run=client -o yaml | kubeseal --format yaml `
+  --controller-name=sealed-secrets-controller --controller-namespace=kube-system `
+  > environments/prod/ghcr-pull-secret-kyverno/secrets/sealed-secret.yaml
+```
+
 ## auth-service (necesita JWT_SECRET, AES_SECRET, DATABASE_URL)
 
 ```powershell

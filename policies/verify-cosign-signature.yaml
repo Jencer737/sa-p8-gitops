@@ -41,6 +41,16 @@ spec:
       verifyImages:
         - imageReferences:
             - "ghcr.io/jencer737/sa-p8-*"
+          # Las imagenes son privadas en GHCR -- sin esto, el propio
+          # webhook de Kyverno no puede autenticarse para consultar la
+          # firma y rechaza el pod con "UNAUTHORIZED", descubierto en la
+          # primera vez que un Rollout intento crear un pod nuevo despues
+          # de que esta politica quedo realmente activa. El secreto debe
+          # vivir en el namespace de Kyverno (no en sa-p8) -- requisito
+          # del propio Kyverno.
+          imageRegistryCredentials:
+            secrets:
+              - ghcr-pull-secret
           attestors:
             - entries:
                 - keyless:
