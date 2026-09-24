@@ -62,7 +62,6 @@ spec:
               requests: { cpu: 50m, memory: 128Mi }
               limits: { cpu: 500m, memory: 512Mi }
           configuration:
-            defaultVolumesToFsBackup: true
             backupStorageLocation:
               - name: default
                 provider: gcp
@@ -84,7 +83,9 @@ spec:
                 includedNamespaces:
                   - sa-p8
                 snapshotVolumes: false
-                defaultVolumesToFsBackup: true
+                # modo opt-in: solo los volumenes anotados con
+                # backup.velero.io/backup-volumes (el 'data' de Postgres)
+                defaultVolumesToFsBackup: false
     # P9: sincroniza el SealedSecret cloud-credentials (ver
     # auth-service.yaml para la nota completa de por que esto reemplaza
     # el kubectl apply manual de P8).

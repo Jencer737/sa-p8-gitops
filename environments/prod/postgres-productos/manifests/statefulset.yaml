@@ -23,6 +23,12 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: postgres-productos
+      annotations:
+        # Velero (modo opt-in): respalda SOLO el volumen "data" -- el
+        # unico con estado. Sin esto, con defaultVolumesToFsBackup se
+        # respaldaban tambien los emptyDir "tmp" de los 10 pods sin
+        # estado, sin ningun valor de recuperacion.
+        backup.velero.io/backup-volumes: data
     spec:
       securityContext:
         runAsNonRoot: true
