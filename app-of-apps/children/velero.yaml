@@ -101,3 +101,7 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # el chart crea Schedule/BackupStorageLocation (CRs) en el mismo sync
+      # que instala sus CRDs: sin esto el dry-run falla en la 1a pasada de
+      # una reconstruccion desde cero y depende de los reintentos.
+      - SkipDryRunOnMissingResource=true
