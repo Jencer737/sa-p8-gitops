@@ -45,14 +45,28 @@ spec:
               volumeMounts:
                 - mountPath: /target
                   name: plugins
+          # Respaldo del CONTENIDO de los volumenes por sistema de archivos
+          # (Kopia, via el daemonset node-agent) en vez de snapshots de
+          # disco de GCP: solo necesita acceso al bucket (que la Service
+          # Account ya tiene), no permisos de compute.snapshots, y los
+          # datos quedan en el bucket externo al cluster, no como
+          # snapshots dentro del mismo proyecto. Sin node-agent, un
+          # backup "con volumenes" solo guardaba los objetos de
+          # Kubernetes (el PVC vacio), no los datos -- descubierto al
+          # revisar la configuracion antes de la primera prueba real de
+          # restauracion.
+          deployNodeAgent: true
+          snapshotsEnabled: false
+          nodeAgent:
+            resources:
+              requests: { cpu: 50m, memory: 128Mi }
+              limits: { cpu: 500m, memory: 512Mi }
           configuration:
+            defaultVolumesToFsBackup: true
             backupStorageLocation:
               - name: default
                 provider: gcp
                 bucket: "sa-p9-velero-202002141" # output velero_bucket_name del stack persistent
-            volumeSnapshotLocation:
-              - name: default
-                provider: gcp
           credentials:
             existingSecret: cloud-credentials
           # Respaldo diario, con volumenes persistentes incluidos (el
@@ -69,7 +83,7 @@ spec:
                 ttl: "336h0m0s" # 14 dias
                 includedNamespaces:
                   - sa-p8
-                snapshotVolumes: true
+                snapshotVolumes: false
                 defaultVolumesToFsBackup: true
     # P9: sincroniza el SealedSecret cloud-credentials (ver
     # auth-service.yaml para la nota completa de por que esto reemplaza
