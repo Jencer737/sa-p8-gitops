@@ -33,6 +33,16 @@ spec:
           enabled: false
         webhooksCleanup:
           enabled: false
+        # config.preserve=true (defecto) crea un hook "post-delete" que
+        # conserva un ConfigMap al desinstalar. ArgoCD agrega entonces a la
+        # Application el finalizer post-delete-finalizer.argocd.argoproj.io,
+        # que solo el controlador de ArgoCD puede retirar; al destruir el
+        # cluster (Terraform desinstala ArgoCD antes de borrar el namespace)
+        # nadie lo procesa y el namespace "argocd" queda en Terminating hasta
+        # el timeout -- descubierto en la 1a y 2a prueba de DR. Sin ese hook
+        # no hay finalizer.
+        config:
+          preserve: false
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno
