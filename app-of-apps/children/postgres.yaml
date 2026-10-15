@@ -18,10 +18,10 @@ spec:
   project: default
   sources:
     - repoURL: https://github.com/Jencer737/sa-p8-gitops
-      targetRevision: main
+      targetRevision: p10
       path: environments/prod/postgres-productos/manifests
     - repoURL: https://github.com/Jencer737/sa-p8-gitops
-      targetRevision: main
+      targetRevision: p10
       path: environments/prod/postgres-productos/secrets
   destination:
     server: https://kubernetes.default.svc

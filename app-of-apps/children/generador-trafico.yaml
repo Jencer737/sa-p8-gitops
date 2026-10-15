@@ -1,0 +1,31 @@
+# P10: trafico continuo de "usuarios" contra el api-gateway (k6). Sin
+# trafico real no hay metricas que analizar: el canary quedaria
+# Inconclusive y los SLO sin datos. Vive en su propio namespace (carga),
+# fuera de sa-p8: no es parte del sistema, es quien lo usa.
+#
+# Para apagarlo (ordenes y pagos escriben en Neon): replicas: 0 en
+# carga/deployment.yaml, en un commit.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: generador-trafico
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    app.kubernetes.io/part-of: sa-observabilidad
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Jencer737/sa-p8-gitops
+    targetRevision: p10
+    path: carga
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: carga
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

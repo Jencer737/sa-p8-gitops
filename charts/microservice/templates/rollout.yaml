@@ -61,8 +61,25 @@ spec:
             - secretRef:
                 name: {{ .Values.envFromSealedSecret }}
             {{- end }}
-          {{- if .Values.extraEnv }}
           env:
+            # --- P10: OpenTelemetry ------------------------------------
+            # El hash de plantilla que Argo Rollouts pone en cada pod viaja
+            # como atributo de recurso de toda la telemetria: es lo que deja
+            # al AnalysisTemplate medir SOLO a la version candidata.
+            - name: POD_NAME
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+            - name: POD_NAMESPACE
+              valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
+            - name: ROLLOUT_POD_TEMPLATE_HASH
+              valueFrom: { fieldRef: { fieldPath: "metadata.labels['rollouts-pod-template-hash']" } }
+            - name: OTEL_SERVICE_NAME
+              value: {{ include "microservice.name" . | quote }}
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.version={{ .Values.image.tag }},k8s.namespace.name=$(POD_NAMESPACE),k8s.pod.name=$(POD_NAME),rollout.pod_template_hash=$(ROLLOUT_POD_TEMPLATE_HASH)"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.otel.endpoint | quote }}
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: {{ .Values.otel.metricExportIntervalMs | quote }}
             {{- range .Values.extraEnv }}
             {{- if .valueFrom }}
             - name: {{ .name }}
@@ -70,7 +87,6 @@ spec:
                 {{- toYaml .valueFrom | nindent 16 }}
             {{- end }}
             {{- end }}
-          {{- end }}
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
           startupProbe:
@@ -110,11 +126,13 @@ spec:
         {{- else if hasKey . "analysis" }}
         - analysis:
             templates:
-              - templateName: {{ include "microservice.name" $ }}-smoke-test
+              - templateName: {{ include "microservice.name" $ }}-analisis-metricas
             args:
-              - name: canary-service
-                value: {{ include "microservice.name" $ }}-canary
-              - name: stable-service
-                value: {{ include "microservice.name" $ }}-stable
+              - name: service-name
+                value: {{ include "microservice.name" $ }}
+              # hash de la revision mas nueva = la version candidata
+              - name: canary-hash
+                valueFrom:
+                  podTemplateHashValue: Latest
         {{- end }}
         {{- end }}

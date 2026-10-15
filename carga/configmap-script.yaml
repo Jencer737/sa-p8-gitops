@@ -1,0 +1,104 @@
+# GENERADO por P10/scripts/sincronizar-gitops.sh desde
+# P10/carga/trafico-usuarios.js -- no editar a mano.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trafico-usuarios
+  namespace: carga
+data:
+  trafico-usuarios.js: |
+    // trafico-usuarios.js
+    //
+    // Trafico continuo que imita a los usuarios de la tienda, a traves del
+    // api-gateway (la misma puerta que usa un usuario real). NO es una prueba
+    // que decida nada: el canary, los SLO y las alertas se calculan sobre las
+    // metricas que este trafico produce al pasar por los servicios, igual que
+    // lo harian con usuarios reales. Sin trafico no hay evidencia, y el
+    // analisis del canary queda "Inconclusive" (ver AnalysisTemplate).
+    //
+    // Mezcla por iteracion (aprox.):
+    //   55% ver el catalogo        POST /productos  { productos }
+    //   30% ver un producto        POST /productos  { producto(id) }
+    //   15% comprar                POST /ordenes    crearOrden  ->  POST /pagos
+    //
+    // Variables: BASE_URL, RATE (iteraciones/s, defecto 2), DURACION.
+    // En el cluster corre como Deployment (namespace "carga"); en local,
+    // desde docker compose. Se apaga escalando el Deployment a 0 (los
+    // servicios de ordenes/pagos escriben en Neon: no dejarlo corriendo con
+    // el cluster apagado... ni encendido sin necesidad).
+
+    import http from "k6/http";
+    import { check } from "k6";
+
+    const BASE = __ENV.BASE_URL || "http://api-gateway.sa-p8.svc.cluster.local:4000";
+    const JSON_HEADERS = { headers: { "Content-Type": "application/json" }, timeout: "10s" };
+
+    export const options = {
+      scenarios: {
+        usuarios: {
+          executor: "constant-arrival-rate",
+          rate: Number(__ENV.RATE || 2),
+          timeUnit: "1s",
+          duration: __ENV.DURACION || "720h",
+          preAllocatedVUs: 10,
+          maxVUs: 60,
+        },
+      },
+      summaryTrendStats: ["avg", "p(95)", "p(99)"],
+    };
+
+    let catalogo = [];
+
+    function gql(ruta, query, variables, nombre) {
+      return http.post(`${BASE}${ruta}`, JSON.stringify({ query, variables }), { ...JSON_HEADERS, tags: { name: nombre } });
+    }
+
+    function verCatalogo() {
+      const r = gql("/productos", "query { productos { id nombre precio stock } }", {}, "catalogo");
+      check(r, { "catalogo 200": (x) => x.status === 200 });
+      if (r.status === 200) {
+        try {
+          catalogo = r.json("data.productos").filter((p) => p.stock > 0);
+        } catch (_) {
+          // respuesta sin el formato esperado: se conserva el catalogo previo
+        }
+      }
+    }
+
+    function verProducto() {
+      const p = catalogo[Math.floor(Math.random() * catalogo.length)];
+      const r = gql("/productos", "query($id: ID!) { producto(id: $id) { id nombre precio stock } }", { id: p.id }, "producto");
+      check(r, { "producto 200": (x) => x.status === 200 });
+    }
+
+    function comprar() {
+      const p = catalogo[Math.floor(Math.random() * catalogo.length)];
+      const cliente = `cliente-${Math.floor(Math.random() * 500)}`;
+      const r = gql(
+        "/ordenes",
+        "mutation($c: String!, $p: String!) { crearOrden(clienteId: $c, items: [{productoId: $p, cantidad: 1}]) { id total } }",
+        { c: cliente, p: p.id },
+        "crear_orden"
+      );
+      check(r, { "orden 200": (x) => x.status === 200 });
+      let orden = null;
+      try {
+        orden = r.json("data.crearOrden");
+      } catch (_) {
+        orden = null;
+      }
+      if (!orden) return;
+      const pago = http.post(`${BASE}/pagos`, JSON.stringify({ orden_id: orden.id, monto: orden.total }), {
+        ...JSON_HEADERS,
+        tags: { name: "pagar" },
+      });
+      check(pago, { "pago 200": (x) => x.status === 200 });
+    }
+
+    export default function () {
+      if (catalogo.length === 0) return verCatalogo();
+      const x = Math.random();
+      if (x < 0.55) verCatalogo();
+      else if (x < 0.85) verProducto();
+      else comprar();
+    }

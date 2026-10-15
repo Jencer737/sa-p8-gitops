@@ -1,0 +1,23 @@
+# Prometheus raspa las metricas de los servicios en el endpoint :8889 del
+# otel-collector (exportador "prometheus"), no en cada pod: los servicios
+# solo hablan OTLP con el collector.
+#
+# honorLabels: las etiquetas que trae cada serie (service_name, k8s_pod_name,
+# rollout_pod_template_hash...) describen al servicio que la emitio, no al
+# collector; no deben renombrarse a exported_*.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: otel-collector
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: sa-observabilidad
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: otel-collector
+      component: standalone-collector
+  endpoints:
+    - port: prom-exporter
+      interval: 15s
+      honorLabels: true

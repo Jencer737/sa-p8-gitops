@@ -1,0 +1,103 @@
+# P10: OpenTelemetry Collector en modo "agente" (DaemonSet, uno por nodo)
+# para los REGISTROS. Lee los archivos de log de los contenedores de
+# sa-p8 (/var/log/pods/sa-p8_*) y los envia a Loki por OTLP.
+#
+# Por que asi y no desde el SDK de cada servicio: el servicio solo escribe
+# JSON en stdout (no depende de que Loki este arriba para no perder
+# registros, y "kubectl logs" sigue funcionando igual); recolectar es
+# responsabilidad de la plataforma.
+#
+# transform/registros:
+#  - service.name = nombre del contenedor (igual al del servicio): Loki lo
+#    convierte en la etiqueta service_name, la misma que usa Grafana para
+#    saltar de un span a sus registros.
+#  - Si la linea es JSON, copia trace_id/span_id/level a los campos OTLP
+#    del registro: Loki los guarda como metadatos estructurados, ademas de
+#    seguir en el cuerpo JSON.
+#
+# Corre como root: los archivos de /var/log/pods del nodo solo los puede
+# leer root. Las politicas de Kyverno aplican al namespace sa-p8, no a
+# observability.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-agent
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/part-of: sa-observabilidad
+spec:
+  project: default
+  source:
+    repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart: opentelemetry-collector
+    targetRevision: 0.175.1
+    helm:
+      releaseName: otel-agent
+      values: |
+        fullnameOverride: otel-agent
+        mode: daemonset
+        image:
+          repository: otel/opentelemetry-collector-contrib
+        command:
+          name: otelcol-contrib
+        presets:
+          logsCollection:
+            enabled: true
+            includeCollectorLogs: false
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+        resources:
+          requests: { cpu: 25m, memory: 64Mi }
+          limits: { cpu: 300m, memory: 256Mi }
+        ports:
+          otlp: { enabled: false }
+          otlp-http: { enabled: false }
+          jaeger-compact: { enabled: false }
+          jaeger-thrift: { enabled: false }
+          jaeger-grpc: { enabled: false }
+          zipkin: { enabled: false }
+        config:
+          receivers:
+            otlp: null
+            jaeger: null
+            zipkin: null
+            prometheus: null
+            filelog:
+              include:
+                - /var/log/pods/sa-p8_*/*/*.log
+          processors:
+            transform/registros:
+              error_mode: ignore
+              log_statements:
+                - context: resource
+                  statements:
+                    - set(attributes["service.name"], attributes["k8s.container.name"]) where attributes["service.name"] == nil
+                - context: log
+                  statements:
+                    - set(cache, ParseJSON(body)) where IsString(body) and IsMatch(body, "^[{]")
+                    - set(trace_id.string, cache["trace_id"]) where cache["trace_id"] != nil
+                    - set(span_id.string, cache["span_id"]) where cache["span_id"] != nil
+                    - set(severity_text, cache["level"]) where cache["level"] != nil
+          exporters:
+            otlphttp/loki:
+              endpoint: http://loki.observability.svc.cluster.local:3100/otlp
+          service:
+            pipelines:
+              logs:
+                receivers: [filelog]
+                processors: [memory_limiter, transform/registros, batch]
+                exporters: [otlphttp/loki]
+              traces: null
+              metrics: null
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

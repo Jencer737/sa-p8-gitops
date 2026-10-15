@@ -9,18 +9,18 @@ spec:
   project: default
   sources:
     - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
-      targetRevision: main
+      targetRevision: p10
       path: charts/microservice
       helm:
         valueFiles:
           - $values/environments/prod/productos-service/values.yaml
     - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
-      targetRevision: main
+      targetRevision: p10
       ref: values
     # P9: sincroniza el SealedSecret (ver auth-service.yaml para la nota
     # completa de por que esto reemplaza el kubectl apply manual de P8).
     - repoURL: https://github.com/Jencer737/sa-p8-gitops.git
-      targetRevision: main
+      targetRevision: p10
       path: environments/prod/productos-service/secrets
   destination:
     server: https://kubernetes.default.svc

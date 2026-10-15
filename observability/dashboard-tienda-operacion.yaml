@@ -1,0 +1,1468 @@
+# GENERADO por P10/scripts/sincronizar-gitops.sh desde
+# P10/dashboards/tienda-operacion.json -- no editar a mano.
+# El sidecar de Grafana carga todo ConfigMap con grafana_dashboard=1.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-tienda-operacion
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/part-of: sa-observabilidad
+data:
+  tienda-operacion.json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "description": "Tablero de operaciÃ³n organizado por las cuatro seÃ±ales de oro. Cada panel responde una pregunta concreta.",
+      "editable": true,
+      "links": [],
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "panels": [],
+          "title": "Â¿EstÃ¡ bien la tienda? â€” resumen para cualquier persona",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "SLO-1: 99% de las peticiones de usuarios sin error del servidor, ventana mÃ³vil de 7 dÃ­as. Rojo = promesa incumplida.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 2,
+              "noValue": "sin datos",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.99
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 0,
+            "y": 1
+          },
+          "id": 2,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sa:slo_disponibilidad:sli:ratio_7d",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Â¿Cumplimos la promesa de disponibilidad? (7 dÃ­as)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "CuÃ¡nto del 1% de errores permitido en 7 dÃ­as sigue disponible. 0% = se agotÃ³: congelar despliegues riesgosos.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "noValue": "sin datos",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.25
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.5
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 4,
+            "y": 1
+          },
+          "id": 3,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sa:slo_disponibilidad:presupuesto_restante:ratio_7d",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Presupuesto de errores que queda esta semana",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "SLO-2: 95% de las consultas del catÃ¡logo en menos de 300 ms, ventana mÃ³vil de 7 dÃ­as.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 2,
+              "noValue": "sin datos",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.95
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 1
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sa:slo_latencia_catalogo:sli:ratio_7d",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Â¿El catÃ¡logo carga rÃ¡pido? (7 dÃ­as)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "CuÃ¡nto del 5% de consultas lentas permitido en 7 dÃ­as sigue disponible.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "noValue": "sin datos",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.25
+                  },
+                  {
+                    "color": "green",
+                    "value": 0.5
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 12,
+            "y": 1
+          },
+          "id": 5,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sa:slo_latencia_catalogo:presupuesto_restante:ratio_7d",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Presupuesto de lentitud que queda esta semana",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Alertas de consumo de presupuesto disparadas (page = atender ya; ticket = horario laboral). Cada una enlaza a su runbook.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "noValue": "sin datos",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 16,
+            "y": 1
+          },
+          "id": 6,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "count(ALERTS{alertstate=\"firing\", slo!=\"\"}) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Alertas que exigen atenciÃ³n ahora",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Intentos de compra que fallaron por culpa del sistema (no por falta de stock).",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "noValue": "sin datos",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 10
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 20,
+            "y": 1
+          },
+          "id": 7,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(sa_ordenes_total{resultado=\"error\"}[1h])) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Ã“rdenes perdidas por fallas del sistema (Ãºltima hora)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Compras completadas con Ã©xito.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "noValue": "sin datos",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 0,
+            "y": 5
+          },
+          "id": 8,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(sa_ordenes_total{resultado=\"creada\"}[1h]))",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Ã“rdenes creadas (Ãºltima hora)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Suma del total de las Ã³rdenes creadas, en quetzales.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "noValue": "sin datos",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "prefix:Q "
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 6,
+            "y": 5
+          },
+          "id": 9,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(sa_ordenes_monto_total[1h]))",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Ventas (Ãºltima hora)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Porcentaje de pagos que el procesador rechazÃ³. Si sube, se pierden ventas aunque el sistema 'funcione'.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 1,
+              "noValue": "sin datos",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.15
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.3
+                  }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 12,
+            "y": 5
+          },
+          "id": 10,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(sa_pagos_total{estado=\"RECHAZADO\"}[1h])) / sum(increase(sa_pagos_total[1h]))",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Pagos rechazados (Ãºltima hora)",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Rechazos de negocio: no consumen presupuesto de error, pero son ventas perdidas.",
+          "fieldConfig": {
+            "defaults": {
+              "decimals": 0,
+              "noValue": "sin datos",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "blue",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 6,
+            "x": 18,
+            "y": 5
+          },
+          "id": 11,
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(sa_ordenes_total{resultado=\"rechazada\"}[1h])) or vector(0)",
+              "instant": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Ã“rdenes rechazadas por falta de stock (Ãºltima hora)",
+          "type": "stat"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          },
+          "id": 12,
+          "panels": [],
+          "title": "Errores â€” Â¿estÃ¡n fallando los usuarios? Â¿en quÃ© servicio empieza?",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Tasa de quemado = proporciÃ³n de errores / 1%. 1 = ritmo sostenible. LÃ­nea roja 8.4 = alerta de quema rÃ¡pida (1h y 5m); naranja 2.8 = quema lenta (6h y 30m).",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never",
+                "thresholdsStyle": {
+                  "mode": "line+area"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 2.8
+                  },
+                  {
+                    "color": "red",
+                    "value": 8.4
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 9
+          },
+          "id": 13,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sa:slo_disponibilidad:burn_rate:5m",
+              "legendFormat": "5 min",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sa:slo_disponibilidad:burn_rate:1h",
+              "legendFormat": "1 h",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sa:slo_disponibilidad:burn_rate:6h",
+              "legendFormat": "6 h",
+              "refId": "C"
+            }
+          ],
+          "title": "Â¿A quÃ© ritmo se gasta el presupuesto de disponibilidad?",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "ProporciÃ³n de respuestas 5xx por ruta, vista desde el usuario.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never"
+              },
+              "max": 1,
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 9
+          },
+          "id": 14,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (route) (rate(sa_http_server_requests_total{service_name=\"api-gateway\", route=~\"/productos|/ordenes|/pagos|/auth\", status_code=~\"5..\"}[1m])) / sum by (route) (rate(sa_http_server_requests_total{service_name=\"api-gateway\", route=~\"/productos|/ordenes|/pagos|/auth\"}[1m]))",
+              "legendFormat": "{{route}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Â¿QuÃ© ruta pÃºblica devuelve errores? (gateway)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "ProporciÃ³n de 5xx por servicio. El primero de la cadena que falla (el mÃ¡s profundo) suele ser la causa; los demÃ¡s la propagan.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never"
+              },
+              "max": 1,
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 9
+          },
+          "id": 15,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (service_name) (rate(sa_http_server_requests_total{status_code=~\"5..\"}[1m])) / sum by (service_name) (rate(sa_http_server_requests_total[1m]))",
+              "legendFormat": "{{service_name}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Â¿QuÃ© servicio estÃ¡ fallando?",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 17
+          },
+          "id": 16,
+          "panels": [],
+          "title": "Latencia â€” Â¿quÃ© tan rÃ¡pido responde? Â¿quiÃ©n agrega la demora?",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "ProporciÃ³n de consultas del catÃ¡logo de 300 ms o mÃ¡s / 5%. Mismos umbrales de alerta que disponibilidad.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never",
+                "thresholdsStyle": {
+                  "mode": "line+area"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 2.8
+                  },
+                  {
+                    "color": "red",
+                    "value": 8.4
+                  }
+                ]
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 18
+          },
+          "id": 17,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sa:slo_latencia_catalogo:burn_rate:5m",
+              "legendFormat": "5 min",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sa:slo_latencia_catalogo:burn_rate:1h",
+              "legendFormat": "1 h",
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sa:slo_latencia_catalogo:burn_rate:6h",
+              "legendFormat": "6 h",
+              "refId": "C"
+            }
+          ],
+          "title": "Â¿A quÃ© ritmo se gasta el presupuesto de lentitud del catÃ¡logo?",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Percentil 95 de lo que espera el usuario. LÃ­nea roja: 300 ms, umbral del SLO del catÃ¡logo.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never",
+                "thresholdsStyle": {
+                  "mode": "line+area"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "transparent",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.3
+                  }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 18
+          },
+          "id": 18,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "histogram_quantile(0.95, sum by (le, route) (rate(sa_http_server_request_duration_seconds_bucket{service_name=\"api-gateway\", route=~\"/productos|/ordenes|/pagos|/auth\"}[5m])))",
+              "legendFormat": "{{route}}",
+              "refId": "A"
+            }
+          ],
+          "title": "p95 por ruta pÃºblica (gateway)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Cada versiÃ³n del Rollout tiene su propio hash: durante un canary aquÃ­ se ve si la candidata es mÃ¡s lenta que la estable. Es lo mismo que mide el AnalysisTemplate.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never"
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 18
+          },
+          "id": 19,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "histogram_quantile(0.95, sum by (le, service_name, rollout_pod_template_hash) (rate(sa_http_server_request_duration_seconds_bucket[2m])))",
+              "legendFormat": "{{service_name}} {{rollout_pod_template_hash}}",
+              "refId": "A"
+            }
+          ],
+          "title": "p95 por servicio y versiÃ³n (canary vs estable)",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 26
+          },
+          "id": 20,
+          "panels": [],
+          "title": "TrÃ¡fico â€” Â¿cuÃ¡nta demanda hay y a dÃ³nde va?",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Demanda real que entra por el gateway. Una caÃ­da brusca sin errores tambiÃ©n es un sÃ­ntoma (los usuarios no llegan).",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never"
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 27
+          },
+          "id": 21,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (route) (rate(sa_http_server_requests_total{service_name=\"api-gateway\", route=~\"/productos|/ordenes|/pagos|/auth\"}[1m]))",
+              "legendFormat": "{{route}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Peticiones por segundo por ruta pÃºblica",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Durante un canary, cuÃ¡nto del trÃ¡fico recibe la candidata (por hash) â€” sin trÃ¡fico, el anÃ¡lisis no tiene evidencia.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never"
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 27
+          },
+          "id": 22,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (service_name, rollout_pod_template_hash) (rate(sa_http_server_requests_total[1m]))",
+              "legendFormat": "{{service_name}} {{rollout_pod_template_hash}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Peticiones por segundo por servicio y versiÃ³n",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 35
+          },
+          "id": 23,
+          "panels": [],
+          "title": "SaturaciÃ³n â€” Â¿nos estamos quedando sin recursos?",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Cerca de 100% el contenedor es estrangulado (throttling) y la latencia sube; el HPA escala al 70% del request.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never"
+              },
+              "max": 1,
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 36
+          },
+          "id": 24,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (container) (rate(container_cpu_usage_seconds_total{namespace=\"sa-p8\", container=~\"api-gateway|auth-service|productos-service|ordenes-service|pagos-service\"}[5m])) / sum by (container) (kube_pod_container_resource_limits{namespace=\"sa-p8\", resource=\"cpu\", container=~\"api-gateway|auth-service|productos-service|ordenes-service|pagos-service\"})",
+              "legendFormat": "{{container}}",
+              "refId": "A"
+            }
+          ],
+          "title": "CPU usada / lÃ­mite, por servicio",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Al llegar a 100% Kubernetes mata el contenedor (OOMKilled).",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never"
+              },
+              "max": 1,
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 36
+          },
+          "id": 25,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (container) (container_memory_working_set_bytes{namespace=\"sa-p8\", container=~\"api-gateway|auth-service|productos-service|ordenes-service|pagos-service\"}) / sum by (container) (kube_pod_container_resource_limits{namespace=\"sa-p8\", resource=\"memory\", container=~\"api-gateway|auth-service|productos-service|ordenes-service|pagos-service\"})",
+              "legendFormat": "{{container}}",
+              "refId": "A"
+            }
+          ],
+          "title": "Memoria usada / lÃ­mite, por servicio",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "description": "Si un servicio estÃ¡ en su mÃ¡ximo de rÃ©plicas, ya no puede absorber mÃ¡s carga escalando.",
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "fillOpacity": 5,
+                "lineWidth": 2,
+                "showPoints": "never"
+              },
+              "unit": "none"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 36
+          },
+          "id": 26,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"sa-p8\"}",
+              "legendFormat": "{{horizontalpodautoscaler}} actuales",
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"sa-p8\"}",
+              "legendFormat": "{{horizontalpodautoscaler}} mÃ¡ximo",
+              "refId": "B"
+            }
+          ],
+          "title": "RÃ©plicas actuales vs mÃ¡ximo del HPA",
+          "type": "timeseries"
+        },
+        {
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 44
+          },
+          "id": 27,
+          "panels": [],
+          "title": "Del sÃ­ntoma a la causa â€” trazas y registros",
+          "type": "row"
+        },
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "description": "BÃºsqueda TraceQL de spans en error. Al abrir una traza se ve el servicio y el span donde naciÃ³ el error; desde el span, 'Logs for this span' lleva a sus registros en Loki.",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 45
+          },
+          "id": 28,
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "limit": 20,
+              "query": "{ status = error }",
+              "queryType": "traceql",
+              "refId": "A",
+              "tableType": "traces"
+            }
+          ],
+          "title": "Trazas con error (Ãºltimos minutos) â€” clic en el Trace ID",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "description": "Peticiones de usuarios que superaron el umbral del SLO de latencia. La traza muestra quÃ© servicio y quÃ© consulta se llevÃ³ el tiempo.",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 45
+          },
+          "id": 29,
+          "targets": [
+            {
+              "datasource": {
+                "type": "tempo",
+                "uid": "tempo"
+              },
+              "limit": 20,
+              "query": "{ resource.service.name = \"api-gateway\" && kind = server && duration > 300ms }",
+              "queryType": "traceql",
+              "refId": "A",
+              "tableType": "traces"
+            }
+          ],
+          "title": "Trazas lentas (> 300 ms) del gateway",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "description": "Registros JSON centralizados en Loki. Cada lÃ­nea trae trace_id: el enlace 'Ver la traza en Tempo' abre la traza completa de esa peticiÃ³n.",
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 54
+          },
+          "id": 30,
+          "options": {
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "{service_name=~\"api-gateway|auth-service|productos-service|ordenes-service|pagos-service\"} | json | level=~\"error|warn\"",
+              "refId": "A"
+            }
+          ],
+          "title": "Registros de error y advertencia de todos los servicios",
+          "type": "logs"
+        }
+      ],
+      "refresh": "30s",
+      "schemaVersion": 39,
+      "tags": [
+        "p10",
+        "slo",
+        "senales-de-oro"
+      ],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timezone": "browser",
+      "title": "Tienda - OperaciÃ³n (P10)",
+      "uid": "sa-p10-operacion",
+      "version": 1
+    }

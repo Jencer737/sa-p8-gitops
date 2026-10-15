@@ -1,0 +1,49 @@
+# P10: backend de trazas (Tempo en modo binario unico). Recibe OTLP del
+# otel-collector; Grafana lo consulta en :3200. Sin disco persistente a
+# proposito: las trazas solo hacen falta para investigar incidentes
+# recientes (retencion 72h); los indicadores de largo plazo (SLO) viven
+# en Prometheus, no en las trazas.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tempo
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/part-of: sa-observabilidad
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: tempo
+    targetRevision: 1.24.3
+    helm:
+      releaseName: tempo
+      values: |
+        fullnameOverride: tempo
+        tempo:
+          retention: 72h
+          # Tempo 2.x escucha por defecto solo en localhost: hay que abrir
+          # los receptores OTLP explicitamente para recibir del collector.
+          receivers:
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: "0.0.0.0:4317"
+                http:
+                  endpoint: "0.0.0.0:4318"
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 1Gi }
+        persistence:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

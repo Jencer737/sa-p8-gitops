@@ -90,7 +90,7 @@ spec:
     # auth-service.yaml para la nota completa de por que esto reemplaza
     # el kubectl apply manual de P8).
     - repoURL: https://github.com/Jencer737/sa-p8-gitops
-      targetRevision: main
+      targetRevision: p10
       path: environments/prod/velero/secrets
   destination:
     server: https://kubernetes.default.svc

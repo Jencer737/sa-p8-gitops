@@ -1,0 +1,98 @@
+# P10: OpenTelemetry Collector en modo "gateway" (Deployment). Es el UNICO
+# destino al que hablan los servicios (OTLP/HTTP :4318, variable
+# OTEL_EXPORTER_OTLP_ENDPOINT del chart microservice); el collector decide
+# a donde va cada senal:
+#   trazas   -> Tempo (OTLP gRPC)
+#   metricas -> endpoint Prometheus :8889, raspado por Prometheus
+#               (ServiceMonitor en observability/servicemonitor-otel-collector.yaml)
+# Los registros NO pasan por aqui: los recoge el DaemonSet otel-agent
+# desde los archivos de log de cada nodo (ver otel-agent.yaml).
+#
+# transform/metricas: cada atributo de recurso se convierte en una
+# etiqueta de Prometheus (resource_to_telemetry_conversion). Se conservan
+# solo los que sirven para consultar -- servicio, version, pod y hash de
+# Argo Rollouts (la etiqueta que separa canary de estable) -- y se
+# descartan los que agrega el SDK (pid, runtime, host...), que solo
+# multiplicarian las series.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-collector
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/part-of: sa-observabilidad
+spec:
+  project: default
+  source:
+    repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart: opentelemetry-collector
+    targetRevision: 0.175.1
+    helm:
+      releaseName: otel-collector
+      values: |
+        fullnameOverride: otel-collector
+        mode: deployment
+        replicaCount: 1
+        image:
+          repository: otel/opentelemetry-collector-contrib
+        command:
+          name: otelcol-contrib
+        resources:
+          requests: { cpu: 50m, memory: 128Mi }
+          limits: { cpu: 500m, memory: 512Mi }
+        ports:
+          jaeger-compact: { enabled: false }
+          jaeger-thrift: { enabled: false }
+          jaeger-grpc: { enabled: false }
+          zipkin: { enabled: false }
+          prom-exporter:
+            enabled: true
+            containerPort: 8889
+            servicePort: 8889
+            protocol: TCP
+        config:
+          receivers:
+            jaeger: null
+            zipkin: null
+            prometheus: null
+          processors:
+            transform/metricas:
+              error_mode: ignore
+              metric_statements:
+                - context: resource
+                  statements:
+                    - keep_keys(attributes, ["service.name", "service.version", "k8s.namespace.name", "k8s.pod.name", "rollout.pod_template_hash"])
+          exporters:
+            otlp/tempo:
+              endpoint: tempo.observability.svc.cluster.local:4317
+              tls:
+                insecure: true
+            prometheus:
+              endpoint: "${env:MY_POD_IP}:8889"
+              resource_to_telemetry_conversion:
+                enabled: true
+              # una serie que deja de recibir datos (pod eliminado) se
+              # retira a los 5 minutos
+              metric_expiration: 5m
+          service:
+            pipelines:
+              traces:
+                receivers: [otlp]
+                processors: [memory_limiter, batch]
+                exporters: [otlp/tempo]
+              metrics:
+                receivers: [otlp]
+                processors: [memory_limiter, transform/metricas, batch]
+                exporters: [prometheus]
+              logs: null
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

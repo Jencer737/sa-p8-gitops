@@ -16,7 +16,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/Jencer737/sa-p8-gitops
-    targetRevision: main
+    targetRevision: p10
     path: policies
   destination:
     server: https://kubernetes.default.svc
