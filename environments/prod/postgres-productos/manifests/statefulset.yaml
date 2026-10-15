@@ -15,7 +15,7 @@ metadata:
     app.kubernetes.io/name: postgres-productos
 spec:
   serviceName: postgres-productos
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app.kubernetes.io/name: postgres-productos
