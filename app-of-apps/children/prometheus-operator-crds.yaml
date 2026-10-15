@@ -1,0 +1,40 @@
+# P10: CRDs del Prometheus Operator en su propia Application, ANTES
+# (sync-wave -3) que kube-prometheus-stack (-2).
+#
+# Por que: en la primera reconstruccion real (2026-10-15) el operador
+# arranco 6 s antes de que el CRD "prometheuses" quedara registrado; al
+# iniciar no lo encontro, apago su controlador de Prometheus y nunca lo
+# reviso de nuevo -> no se creo el pod de Prometheus y el bootstrap agoto
+# su espera de 40 min. Con los CRDs ya Established antes de instalar el
+# operador, eso no puede volver a pasar.
+#
+# Version 32.0.1 = la misma del operador que trae kube-prometheus-stack
+# 92.3.1 (v0.94.1).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-operator-crds
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+  labels:
+    app.kubernetes.io/part-of: sa-observabilidad
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus-operator-crds
+    targetRevision: 32.0.1
+    helm:
+      releaseName: prometheus-operator-crds
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # los CRD superan el limite de 256 KiB de la anotacion last-applied
+      - ServerSideApply=true

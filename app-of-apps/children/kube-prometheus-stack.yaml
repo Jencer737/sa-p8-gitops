@@ -31,6 +31,10 @@ spec:
     helm:
       releaseName: kube-prometheus-stack
       values: |
+        # Los CRDs los instala la Application prometheus-operator-crds
+        # (sync-wave -3), antes que el operador. Ver ese archivo.
+        crds:
+          enabled: false
         defaultRules:
           create: false
         kubeControllerManager:
@@ -181,6 +185,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      # Los CRD del operador superan el limite de 256 KiB de la anotacion
-      # last-applied de un apply normal.
       - ServerSideApply=true
