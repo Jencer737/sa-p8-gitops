@@ -21,7 +21,7 @@ spec:
         app.kubernetes.io/name: generador-trafico
       annotations:
         # reinicia k6 cuando cambia el script
-        script-version: "1"
+        script-version: "2"
     spec:
       securityContext:
         runAsNonRoot: true

@@ -19,6 +19,15 @@ spec:
     targetRevision: 2.37.7
     helm:
       releaseName: argo-rollouts
+  # P10: el chart declara preserveUnknownFields: false en sus CRDs y el API
+  # server no lo guarda (es el valor por defecto): ArgoCD veia una
+  # diferencia permanente y dejaba la app en OutOfSync. Solo se ignora ese
+  # campo.
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /spec/preserveUnknownFields
   destination:
     server: https://kubernetes.default.svc
     namespace: argo-rollouts

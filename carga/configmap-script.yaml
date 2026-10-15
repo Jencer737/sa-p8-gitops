@@ -17,9 +17,12 @@ data:
     // analisis del canary queda "Inconclusive" (ver AnalysisTemplate).
     //
     // Mezcla por iteracion (aprox.):
-    //   55% ver el catalogo        POST /productos  { productos }
-    //   30% ver un producto        POST /productos  { producto(id) }
+    //   50% ver el catalogo        POST /productos  { productos }
+    //   25% ver un producto        POST /productos  { producto(id) }
     //   15% comprar                POST /ordenes    crearOrden  ->  POST /pagos
+    //   10% iniciar sesion         POST /auth/login (usuario de prueba creado en setup)
+    // Sin el inicio de sesion, auth-service no recibia trafico: su canary
+    // quedaba Inconclusive (sin evidencia no se promueve) -- 2026-10-15.
     //
     // Variables: BASE_URL, RATE (iteraciones/s, defecto 2), DURACION.
     // En el cluster corre como Deployment (namespace "carga"); en local,
@@ -48,6 +51,19 @@ data:
     };
 
     let catalogo = [];
+
+    // Un usuario de prueba por arranque de k6 (Neon conserva los anteriores).
+    export function setup() {
+      const usuario = { nombre: "Cliente k6", email: `k6-${Date.now()}@tienda.test`, password: "Clave-k6-2026", rol: "Cliente" };
+      const r = http.post(`${BASE}/auth/register`, JSON.stringify(usuario), { ...JSON_HEADERS, tags: { name: "registro" } });
+      check(r, { "registro 201": (x) => x.status === 201 });
+      return { email: usuario.email, password: usuario.password };
+    }
+
+    function iniciarSesion(credenciales) {
+      const r = http.post(`${BASE}/auth/login`, JSON.stringify(credenciales), { ...JSON_HEADERS, tags: { name: "login" } });
+      check(r, { "login 200": (x) => x.status === 200 });
+    }
 
     function gql(ruta, query, variables, nombre) {
       return http.post(`${BASE}${ruta}`, JSON.stringify({ query, variables }), { ...JSON_HEADERS, tags: { name: nombre } });
@@ -95,10 +111,11 @@ data:
       check(pago, { "pago 200": (x) => x.status === 200 });
     }
 
-    export default function () {
+    export default function (credenciales) {
       if (catalogo.length === 0) return verCatalogo();
       const x = Math.random();
-      if (x < 0.55) verCatalogo();
-      else if (x < 0.85) verProducto();
-      else comprar();
+      if (x < 0.5) verCatalogo();
+      else if (x < 0.75) verProducto();
+      else if (x < 0.9) comprar();
+      else iniciarSesion(credenciales);
     }
