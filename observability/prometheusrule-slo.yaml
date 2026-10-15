@@ -1,0 +1,235 @@
+# prometheusrule-slo.yaml (P10)
+#
+# Los 2 SLO de la tienda, medidos donde el usuario los experimenta: en el
+# api-gateway, la unica puerta de entrada (justificacion completa en
+# P10/docs/SLO.md):
+#
+#  SLO-1 "La tienda responde"   99% de las peticiones de usuarios
+#        (catalogo, ordenes, pagos, auth) sin error del servidor (5xx) y
+#        sin quedar abandonadas por falta de respuesta (499: el cliente se
+#        canso de esperar; para el usuario es igual de indisponible).
+#        Ventana movil de 7 dias. Presupuesto: 1%.
+#  SLO-2 "El catalogo es rapido" 95% de las consultas del catalogo
+#        (/productos) en menos de 300 ms. Ventana movil de 7 dias.
+#        Presupuesto: 5%.
+#
+# Por cada SLO hay reglas de registro para:
+#   - la proporcion de eventos malos en 5m, 30m, 1h, 6h y 7d,
+#   - el indicador (SLI) de la ventana completa,
+#   - el presupuesto de error consumido y el restante,
+#   - la tasa de quemado (burn rate) = proporcion mala / presupuesto.
+#
+# ALERTAS: solo por CONSUMO DEL PRESUPUESTO (multi-ventana, como en el
+# libro de SRE de Google), nunca por umbral instantaneo. Los factores
+# estan calculados para una ventana de 7 dias (168 h):
+#   page   (quema rapida): 5% del presupuesto semanal en 1 h
+#          -> factor 0.05 * 168 / 1  = 8.4   (confirmado en 5 m)
+#   ticket (quema lenta):  10% del presupuesto semanal en 6 h
+#          -> factor 0.10 * 168 / 6  = 2.8   (confirmado en 30 m)
+# La ventana corta evita que la alerta siga sonando cuando el problema
+# ya se resolvio pero la ventana larga aun "recuerda" los errores.
+#
+# Las proporciones devuelven 0 (y no "sin datos") cuando hay trafico y
+# ningun error; sin trafico no devuelven nada y ninguna alerta dispara.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sa-slo
+  namespace: observability
+  labels:
+    app.kubernetes.io/part-of: sa-observabilidad
+spec:
+  groups:
+    # ------------------------------------------------------------------
+    # SLO-1: disponibilidad
+    # ------------------------------------------------------------------
+    - name: sa-slo-disponibilidad
+      interval: 30s
+      rules:
+        - record: sa:slo_disponibilidad:error_ratio:rate5m
+          expr: |
+            (sum(rate(sa_http_server_requests_total{service_name="api-gateway", route=~"/productos|/ordenes|/pagos|/auth", status_code=~"5..|499"}[5m])) or on() vector(0))
+            /
+            sum(rate(sa_http_server_requests_total{service_name="api-gateway", route=~"/productos|/ordenes|/pagos|/auth"}[5m]))
+        - record: sa:slo_disponibilidad:error_ratio:rate30m
+          expr: |
+            (sum(rate(sa_http_server_requests_total{service_name="api-gateway", route=~"/productos|/ordenes|/pagos|/auth", status_code=~"5..|499"}[30m])) or on() vector(0))
+            /
+            sum(rate(sa_http_server_requests_total{service_name="api-gateway", route=~"/productos|/ordenes|/pagos|/auth"}[30m]))
+        - record: sa:slo_disponibilidad:error_ratio:rate1h
+          expr: |
+            (sum(rate(sa_http_server_requests_total{service_name="api-gateway", route=~"/productos|/ordenes|/pagos|/auth", status_code=~"5..|499"}[1h])) or on() vector(0))
+            /
+            sum(rate(sa_http_server_requests_total{service_name="api-gateway", route=~"/productos|/ordenes|/pagos|/auth"}[1h]))
+        - record: sa:slo_disponibilidad:error_ratio:rate6h
+          expr: |
+            (sum(rate(sa_http_server_requests_total{service_name="api-gateway", route=~"/productos|/ordenes|/pagos|/auth", status_code=~"5..|499"}[6h])) or on() vector(0))
+            /
+            sum(rate(sa_http_server_requests_total{service_name="api-gateway", route=~"/productos|/ordenes|/pagos|/auth"}[6h]))
+        - record: sa:slo_disponibilidad:objetivo
+          expr: vector(0.99)
+        - record: sa:slo_disponibilidad:burn_rate:5m
+          expr: sa:slo_disponibilidad:error_ratio:rate5m / 0.01
+        - record: sa:slo_disponibilidad:burn_rate:30m
+          expr: sa:slo_disponibilidad:error_ratio:rate30m / 0.01
+        - record: sa:slo_disponibilidad:burn_rate:1h
+          expr: sa:slo_disponibilidad:error_ratio:rate1h / 0.01
+        - record: sa:slo_disponibilidad:burn_rate:6h
+          expr: sa:slo_disponibilidad:error_ratio:rate6h / 0.01
+
+    # La ventana de 7 dias es costosa de evaluar: cada 5 minutos basta.
+    - name: sa-slo-disponibilidad-ventana
+      interval: 5m
+      rules:
+        - record: sa:slo_disponibilidad:error_ratio:rate7d
+          expr: |
+            (sum(rate(sa_http_server_requests_total{service_name="api-gateway", route=~"/productos|/ordenes|/pagos|/auth", status_code=~"5..|499"}[7d])) or on() vector(0))
+            /
+            sum(rate(sa_http_server_requests_total{service_name="api-gateway", route=~"/productos|/ordenes|/pagos|/auth"}[7d]))
+        # El indicador: proporcion de peticiones buenas en la ventana.
+        - record: sa:slo_disponibilidad:sli:ratio_7d
+          expr: 1 - sa:slo_disponibilidad:error_ratio:rate7d
+        # 1 = presupuesto agotado; >1 = SLO incumplido.
+        - record: sa:slo_disponibilidad:presupuesto_consumido:ratio_7d
+          expr: sa:slo_disponibilidad:error_ratio:rate7d / 0.01
+        - record: sa:slo_disponibilidad:presupuesto_restante:ratio_7d
+          expr: 1 - sa:slo_disponibilidad:presupuesto_consumido:ratio_7d
+
+    # ------------------------------------------------------------------
+    # SLO-2: latencia del catalogo (malo = respuesta en 300 ms o mas)
+    # ------------------------------------------------------------------
+    - name: sa-slo-latencia-catalogo
+      interval: 30s
+      rules:
+        - record: sa:slo_latencia_catalogo:error_ratio:rate5m
+          expr: |
+            1 - (
+              sum(rate(sa_http_server_request_duration_seconds_bucket{service_name="api-gateway", route="/productos", le="0.3"}[5m]))
+              /
+              sum(rate(sa_http_server_request_duration_seconds_count{service_name="api-gateway", route="/productos"}[5m]))
+            )
+        - record: sa:slo_latencia_catalogo:error_ratio:rate30m
+          expr: |
+            1 - (
+              sum(rate(sa_http_server_request_duration_seconds_bucket{service_name="api-gateway", route="/productos", le="0.3"}[30m]))
+              /
+              sum(rate(sa_http_server_request_duration_seconds_count{service_name="api-gateway", route="/productos"}[30m]))
+            )
+        - record: sa:slo_latencia_catalogo:error_ratio:rate1h
+          expr: |
+            1 - (
+              sum(rate(sa_http_server_request_duration_seconds_bucket{service_name="api-gateway", route="/productos", le="0.3"}[1h]))
+              /
+              sum(rate(sa_http_server_request_duration_seconds_count{service_name="api-gateway", route="/productos"}[1h]))
+            )
+        - record: sa:slo_latencia_catalogo:error_ratio:rate6h
+          expr: |
+            1 - (
+              sum(rate(sa_http_server_request_duration_seconds_bucket{service_name="api-gateway", route="/productos", le="0.3"}[6h]))
+              /
+              sum(rate(sa_http_server_request_duration_seconds_count{service_name="api-gateway", route="/productos"}[6h]))
+            )
+        - record: sa:slo_latencia_catalogo:objetivo
+          expr: vector(0.95)
+        - record: sa:slo_latencia_catalogo:burn_rate:5m
+          expr: sa:slo_latencia_catalogo:error_ratio:rate5m / 0.05
+        - record: sa:slo_latencia_catalogo:burn_rate:30m
+          expr: sa:slo_latencia_catalogo:error_ratio:rate30m / 0.05
+        - record: sa:slo_latencia_catalogo:burn_rate:1h
+          expr: sa:slo_latencia_catalogo:error_ratio:rate1h / 0.05
+        - record: sa:slo_latencia_catalogo:burn_rate:6h
+          expr: sa:slo_latencia_catalogo:error_ratio:rate6h / 0.05
+
+    - name: sa-slo-latencia-catalogo-ventana
+      interval: 5m
+      rules:
+        - record: sa:slo_latencia_catalogo:error_ratio:rate7d
+          expr: |
+            1 - (
+              sum(rate(sa_http_server_request_duration_seconds_bucket{service_name="api-gateway", route="/productos", le="0.3"}[7d]))
+              /
+              sum(rate(sa_http_server_request_duration_seconds_count{service_name="api-gateway", route="/productos"}[7d]))
+            )
+        - record: sa:slo_latencia_catalogo:sli:ratio_7d
+          expr: 1 - sa:slo_latencia_catalogo:error_ratio:rate7d
+        - record: sa:slo_latencia_catalogo:presupuesto_consumido:ratio_7d
+          expr: sa:slo_latencia_catalogo:error_ratio:rate7d / 0.05
+        - record: sa:slo_latencia_catalogo:presupuesto_restante:ratio_7d
+          expr: 1 - sa:slo_latencia_catalogo:presupuesto_consumido:ratio_7d
+
+    # ------------------------------------------------------------------
+    # Alertas: una por SLO y por velocidad de quemado, cada una con su
+    # runbook. No hay ninguna otra alerta en el sistema (las del chart se
+    # eliminaron: defaultRules.create=false).
+    # ------------------------------------------------------------------
+    - name: sa-slo-alertas
+      interval: 30s
+      rules:
+        - alert: SLODisponibilidadQuemaRapida
+          expr: |
+            sa:slo_disponibilidad:burn_rate:1h > 8.4
+            and
+            sa:slo_disponibilidad:burn_rate:5m > 8.4
+          for: 1m
+          labels:
+            severity: page
+            slo: disponibilidad
+          annotations:
+            summary: "La tienda esta fallando para los usuarios (SLO de disponibilidad)"
+            description: >-
+              En la ultima hora se esta gastando el presupuesto de errores de la
+              semana {{ $value | printf "%.1f" }} veces mas rapido de lo sostenible
+              (a factor 8.4 se agotaria en menos de 20 horas).
+              Hay usuarios que no pueden comprar o ver el catalogo AHORA.
+            runbook_url: https://github.com/Jencer737/Practicas-SA-B-202002141/blob/main/P10/runbooks/RB-01-disponibilidad-quema-rapida.md
+            dashboard: "Grafana > Tienda - Operacion (P10), fila Errores"
+        - alert: SLODisponibilidadQuemaLenta
+          expr: |
+            sa:slo_disponibilidad:burn_rate:6h > 2.8
+            and
+            sa:slo_disponibilidad:burn_rate:30m > 2.8
+          for: 15m
+          labels:
+            severity: ticket
+            slo: disponibilidad
+          annotations:
+            summary: "Errores sostenidos que agotaran el presupuesto semanal (SLO de disponibilidad)"
+            description: >-
+              Durante 6 horas la tasa de errores ha consumido presupuesto
+              {{ $value | printf "%.1f" }} veces mas rapido de lo sostenible.
+              No es una caida total, pero si sigue asi el SLO se incumple esta semana.
+            runbook_url: https://github.com/Jencer737/Practicas-SA-B-202002141/blob/main/P10/runbooks/RB-02-disponibilidad-quema-lenta.md
+            dashboard: "Grafana > Tienda - Operacion (P10), fila Errores"
+        - alert: SLOLatenciaCatalogoQuemaRapida
+          expr: |
+            sa:slo_latencia_catalogo:burn_rate:1h > 8.4
+            and
+            sa:slo_latencia_catalogo:burn_rate:5m > 8.4
+          for: 1m
+          labels:
+            severity: page
+            slo: latencia_catalogo
+          annotations:
+            summary: "El catalogo esta lento para los usuarios (SLO de latencia)"
+            description: >-
+              Demasiadas consultas del catalogo tardan 300 ms o mas: el
+              presupuesto semanal se gasta {{ $value | printf "%.1f" }} veces mas
+              rapido de lo sostenible.
+            runbook_url: https://github.com/Jencer737/Practicas-SA-B-202002141/blob/main/P10/runbooks/RB-03-latencia-catalogo-quema-rapida.md
+            dashboard: "Grafana > Tienda - Operacion (P10), fila Latencia"
+        - alert: SLOLatenciaCatalogoQuemaLenta
+          expr: |
+            sa:slo_latencia_catalogo:burn_rate:6h > 2.8
+            and
+            sa:slo_latencia_catalogo:burn_rate:30m > 2.8
+          for: 15m
+          labels:
+            severity: ticket
+            slo: latencia_catalogo
+          annotations:
+            summary: "Catalogo lento de forma sostenida (SLO de latencia)"
+            description: >-
+              Durante 6 horas el catalogo ha estado lento con mas frecuencia de la
+              comprometida (factor {{ $value | printf "%.1f" }}).
+            runbook_url: https://github.com/Jencer737/Practicas-SA-B-202002141/blob/main/P10/runbooks/RB-04-latencia-catalogo-quema-lenta.md
+            dashboard: "Grafana > Tienda - Operacion (P10), fila Latencia"

@@ -31,9 +31,16 @@ extraEnv: []
 
 envFromSealedSecret: ""   # nombre del Secret (ya desellado) con credenciales sensibles, si aplica
 
+# P10: el SDK de OpenTelemetry suma memoria (~40-60 MiB por proceso); con
+# el limite anterior de 128Mi los pods quedaban al borde del OOMKill.
 resources:
-  requests: { cpu: 50m, memory: 64Mi }
-  limits: { cpu: 200m, memory: 128Mi }
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { cpu: 300m, memory: 256Mi }
+
+# --- Observabilidad (P10) -----------------------------------------------
+otel:
+  endpoint: http://otel-collector.observability.svc.cluster.local:4318
+  metricExportIntervalMs: 10000
 
 probes:
   path: /health
@@ -43,24 +50,33 @@ probes:
 
 # --- Entrega progresiva (Argo Rollouts) ---------------------------------
 canary:
-  # 3 pasos de promocion como minimo (lo exige el PDF), cada uno seguido
-  # de una pausa + AnalysisTemplate. El ultimo paso al 100% no necesita
-  # weight explicito (Argo Rollouts completa automaticamente).
+  # 3 pasos de promocion. Antes de cada analisis hay una pausa: la
+  # candidata necesita recibir trafico real (y Prometheus ver al menos
+  # dos muestras) antes de que haya algo que medir.
   steps:
     - setWeight: 25
-    - pauseSeconds: 30
+    - pauseSeconds: 60
     - analysis: true
     - setWeight: 50
     - pauseSeconds: 30
     - analysis: true
     - setWeight: 100
   analysis:
-    # Umbrales que definen exito/fallo del AnalysisTemplate -- ver
-    # justificacion completa en P8/docs/DOCUMENTACION.md seccion 2.
-    successThreshold: 1
-    failureThreshold: 1
-    inconclusiveThreshold: 0
-    count: 1
+    # P10: el analisis consulta Prometheus (ver analysistemplate.yaml y la
+    # justificacion de los umbrales en P10/docs/DOCUMENTACION.md).
+    prometheusAddress: http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090
+    # 4 mediciones, una cada 30s (~1m30s por paso). Fallan 2 -> se aborta
+    # (failureLimit 1 tolera un pico aislado sin revertir por ruido).
+    interval: 30s
+    count: 4
+    failureLimit: 1
+    # Una medicion sin trafico se tolera; dos -> Inconclusive (pausa).
+    inconclusiveLimit: 1
+    # Tasa de error maxima de la candidata (5xx / total, ventana de 1m).
+    maxErrorRate: 0.05
+    # p95 maximo de la candidata, en segundos. Generico; productos-service
+    # lo baja a 0.3 (el umbral de su SLO de latencia).
+    maxP95Seconds: 1.0
 
 autoscaling:
   enabled: true

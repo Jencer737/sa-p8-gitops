@@ -1,0 +1,188 @@
+# P10: Prometheus + Alertmanager + Grafana (+ kube-state-metrics y
+# node-exporter para la senal de saturacion), via el chart oficial.
+#
+# Decisiones (detalle en P10/docs/DOCUMENTACION.md):
+#  - defaultRules.create: false -> se eliminan las ~150 alertas por
+#    umbral que trae el chart. Nadie las atenderia; las unicas alertas de
+#    este sistema son las de consumo del presupuesto de error de los SLO
+#    (observability/prometheusrule-slo.yaml), cada una con su runbook.
+#  - Los selectores "NilUsesHelmValues: false" hacen que Prometheus tome
+#    cualquier ServiceMonitor/PrometheusRule del cluster, no solo los que
+#    llevan la etiqueta del release.
+#  - Retencion de 8 dias: la ventana de los SLO es de 7.
+#  - kube-controller-manager/scheduler/etcd/proxy deshabilitados: en GKE
+#    el plano de control lo administra Google y no es raspable; dejarlos
+#    activos solo produce objetivos "down" permanentes.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  labels:
+    app.kubernetes.io/part-of: sa-observabilidad
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 92.3.1
+    helm:
+      releaseName: kube-prometheus-stack
+      values: |
+        # Los CRDs los instala la Application prometheus-operator-crds
+        # (sync-wave -3), antes que el operador. Ver ese archivo.
+        crds:
+          enabled: false
+        defaultRules:
+          create: false
+        kubeControllerManager:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeEtcd:
+          enabled: false
+        kubeProxy:
+          enabled: false
+
+        prometheusOperator:
+          # El webhook de admision usa Jobs con hooks de Helm para generar
+          # su certificado; no aporta aqui (las reglas se validan con
+          # promtool en P10/scripts/validar-reglas.sh) y es un punto de
+          # falla mas en cada reconstruccion desde cero.
+          admissionWebhooks:
+            enabled: false
+          tls:
+            enabled: false
+
+        prometheus:
+          prometheusSpec:
+            retention: 8d
+            scrapeInterval: 15s
+            evaluationInterval: 30s
+            ruleSelectorNilUsesHelmValues: false
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            probeSelectorNilUsesHelmValues: false
+            resources:
+              requests: { cpu: 200m, memory: 768Mi }
+              limits: { cpu: "1", memory: 1536Mi }
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 10Gi
+
+        alertmanager:
+          alertmanagerSpec:
+            resources:
+              requests: { cpu: 20m, memory: 64Mi }
+              limits: { cpu: 100m, memory: 128Mi }
+          # Dos niveles, segun lo que exige cada alerta (ver runbooks):
+          #  - page: quema rapida del presupuesto -> atender YA.
+          #  - ticket: quema lenta -> atender en horario laboral.
+          # Los receptores no tienen integracion externa configurada (no
+          # hay un canal de guardia real en esta practica): las alertas se
+          # ven en la UI de Alertmanager y en Grafana. Conectar un correo
+          # o webhook es agregar el bloque *_configs al receptor.
+          config:
+            global:
+              resolve_timeout: 5m
+            route:
+              receiver: "nulo"
+              group_by: ["alertname", "slo"]
+              group_wait: 30s
+              group_interval: 5m
+              repeat_interval: 4h
+              routes:
+                - receiver: "guardia"
+                  matchers: ['severity="page"']
+                  repeat_interval: 1h
+                - receiver: "tickets"
+                  matchers: ['severity="ticket"']
+                  repeat_interval: 24h
+            # Si ya hay una quema rapida, el aviso de quema lenta del mismo
+            # SLO es redundante: se suprime.
+            inhibit_rules:
+              - source_matchers: ['severity="page"']
+                target_matchers: ['severity="ticket"']
+                equal: ["slo"]
+            receivers:
+              - name: "nulo"
+              - name: "guardia"
+              - name: "tickets"
+            templates: []
+
+        grafana:
+          # Grafana solo es accesible por port-forward (ClusterIP): la
+          # contrasena fija evita que el chart genere una aleatoria en cada
+          # render (ArgoCD la veria como un cambio permanente).
+          adminPassword: sa-p10-admin
+          defaultDashboardsEnabled: false
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 384Mi }
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+              labelValue: "1"
+              searchNamespace: ALL
+          # Las fuentes de datos se enlazan entre si: desde un registro de
+          # Loki se salta a su traza (campo derivado trace_id) y desde un
+          # span de Tempo a sus registros (tracesToLogsV2).
+          additionalDataSources:
+            - name: Loki
+              type: loki
+              uid: loki
+              access: proxy
+              url: http://loki.observability.svc.cluster.local:3100
+              jsonData:
+                maxLines: 1000
+                derivedFields:
+                  - name: trace_id
+                    matcherType: regex
+                    matcherRegex: '"trace_id":\s*"(\w+)"'
+                    url: '$${__value.raw}'
+                    datasourceUid: tempo
+                    urlDisplayLabel: "Ver la traza en Tempo"
+            - name: Tempo
+              type: tempo
+              uid: tempo
+              access: proxy
+              url: http://tempo.observability.svc.cluster.local:3200
+              jsonData:
+                nodeGraph:
+                  enabled: true
+                lokiSearch:
+                  datasourceUid: loki
+                tracesToLogsV2:
+                  datasourceUid: loki
+                  spanStartTimeShift: "-2m"
+                  spanEndTimeShift: "2m"
+                  filterByTraceID: false
+                  filterBySpanID: false
+                  customQuery: true
+                  query: '{service_name="$${__span.tags["service.name"]}"} | json | trace_id="$${__trace.traceId}"'
+
+        kube-state-metrics:
+          resources:
+            requests: { cpu: 20m, memory: 64Mi }
+            limits: { cpu: 100m, memory: 128Mi }
+        prometheus-node-exporter:
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

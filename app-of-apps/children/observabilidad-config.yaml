@@ -1,0 +1,37 @@
+# P10: lo que es PROPIO de esta practica sobre el stack de observabilidad
+# (carpeta observability/ del repo):
+#   - prometheusrule-slo.yaml: SLO, presupuesto de error y alertas
+#   - servicemonitor-otel-collector.yaml: raspado de las metricas
+#   - dashboard-tienda-operacion.yaml: tablero de Grafana (ConfigMap que
+#     el sidecar de Grafana carga solo; se genera desde
+#     P10/dashboards/tienda-operacion.json con P10/scripts/sincronizar-gitops.sh)
+# Sync-wave 1: despues de kube-prometheus-stack (-2), que instala los CRD
+# de PrometheusRule y ServiceMonitor.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observabilidad-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    app.kubernetes.io/part-of: sa-observabilidad
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Jencer737/sa-p8-gitops
+    targetRevision: p10
+    path: observability
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
+      # el ConfigMap del tablero supera el limite de la anotacion
+      # last-applied de un apply normal
+      - ServerSideApply=true

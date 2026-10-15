@@ -2,7 +2,7 @@
 
 image:
   repository: ghcr.io/jencer737/sa-p8-productos-service
-  tag: "v0.1.6"
+  tag: "p10-v1.0.2"
 
 service:
   port: 4002
@@ -11,7 +11,25 @@ probes:
   path: /health
 
 resources:
-  requests: { cpu: 50m, memory: 64Mi }
-  limits: { cpu: 200m, memory: 128Mi }
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { cpu: 300m, memory: 256Mi }
 
 envFromSealedSecret: productos-service-secrets
+
+# P10: el analisis del canary de productos usa el MISMO umbral que su SLO
+# de latencia (95% de las consultas del catalogo en menos de 300 ms): una
+# candidata cuyo p95 supera 0.3 s ya esta consumiendo presupuesto de error
+# y no debe promoverse.
+canary:
+  analysis:
+    maxP95Seconds: 0.3
+
+# P10, escenario A (fallo inducido para demostrar la reversion por
+# metricas). Descomentar en un commit propio: genera una revision nueva
+# del Rollout cuya lectura del catalogo tarda +800 ms (ver
+# P10/services/productos-service/src/falloInducido.ts).
+# extraEnv:
+#   - name: FALLO_INDUCIDO
+#     value: "latencia"
+#   - name: FALLO_LATENCIA_MS
+#     value: "800"
