@@ -2,7 +2,7 @@
 
 image:
   repository: ghcr.io/jencer737/sa-p8-productos-service
-  tag: "p10-v1.0.0"
+  tag: "p10-v1.0.2"
 
 service:
   port: 4002
