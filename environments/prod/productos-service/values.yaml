@@ -28,8 +28,8 @@ canary:
 # metricas). Descomentar en un commit propio: genera una revision nueva
 # del Rollout cuya lectura del catalogo tarda +800 ms (ver
 # P10/services/productos-service/src/falloInducido.ts).
-# extraEnv:
-#   - name: FALLO_INDUCIDO
-#     value: "latencia"
-#   - name: FALLO_LATENCIA_MS
-#     value: "800"
+extraEnv:
+  - name: FALLO_INDUCIDO
+    value: "latencia"
+  - name: FALLO_LATENCIA_MS
+    value: "800"
