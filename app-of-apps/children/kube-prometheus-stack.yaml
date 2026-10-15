@@ -122,9 +122,11 @@ spec:
           # render (ArgoCD la veria como un cambio permanente).
           adminPassword: sa-p10-admin
           defaultDashboardsEnabled: false
+          # 2026-10-15: con 384Mi Grafana 13 fue OOMKilled al abrir el tablero
+          # (30 paneles consultando a la vez). Medido en reposo: ~280Mi.
           resources:
-            requests: { cpu: 50m, memory: 128Mi }
-            limits: { cpu: 300m, memory: 384Mi }
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { cpu: "1", memory: 1Gi }
           sidecar:
             dashboards:
               enabled: true
